@@ -34,7 +34,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/DateTime>
 #include <osgEarth/MapNode>
-#include <osgEarth/Sky>
+#include <osgEarthUtil/Sky>
 
 // #include <osgEarthDrivers/sky_silverlining/SilverLiningOptions>
 
@@ -49,7 +49,7 @@ struct OSGSkyNode::Hidden : public QObject {
 private:
     OSGSkyNode * const self;
 
-    osg::ref_ptr<osgEarth::SkyNode> skyNode;
+    osg::ref_ptr<osgEarth::Util::SkyNode> skyNode;
 
 public:
     OSGNode     *sceneNode;
@@ -128,9 +128,9 @@ public:
         }
     }
 
-    osgEarth::SkyNode *createSimpleSky(osgEarth::MapNode *mapNode)
+    osgEarth::Util::SkyNode *createSimpleSky(osgEarth::MapNode *mapNode)
     {
-        return osgEarth::SkyNode::create(/*mapNode*/);
+        return osgEarth::Util::SkyNode::create(mapNode);
     }
 
 /*

@@ -31,7 +31,7 @@
 #include <osg/Node>
 
 #ifdef USE_OSGEARTH
-#include <osgEarth/LogarithmicDepthBuffer>
+#include <osgEarthUtil/LogarithmicDepthBuffer>
 #endif
 
 #include <QDebug>
