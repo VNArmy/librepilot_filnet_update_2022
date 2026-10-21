@@ -30,22 +30,23 @@ class Repo:
 
     Example:
         r = Repo('/path/to/git/repository')
-        print "path:       ", r.path()
-        print "origin:     ", r.origin()
-        print "hash:       ", r.hash()
-        print "short hash: ", r.hash(8)
-        print "Unix time:  ", r.time()
-        print "commit date:", r.time("%Y%m%d")
-        print "commit tag: ", r.tag()
-        print "branch:     ", r.branch()
-        print "release tag:", r.reltag()
+        print("path:       ", r.path())
+        print("origin:     ", r.origin())
+        print("hash:       ", r.hash())
+        print("short hash: ", r.hash(8))
+        print("Unix time:  ", r.time())
+        print("commit date:", r.time("%Y%m%d"))
+        print("commit tag: ", r.tag())
+        print("branch:     ", r.branch())
+        print("release tag:", r.reltag())
     """
 
     def _exec(self, cmd):
         """Execute git using cmd as arguments"""
         self._git = 'git'
         git = Popen(self._git + " " + cmd, cwd = self._path,
-                    shell = True, stdout = PIPE, stderr = PIPE)
+                    shell = True, stdout = PIPE, stderr = PIPE,
+                    universal_newlines = True)
         self._out, self._err = git.communicate()
         self._rc = git.poll()
 
@@ -226,17 +227,17 @@ class Repo:
 
     def info(self):
         """Print some repository info"""
-        print "path:       ", self.path()
-        print "origin:     ", self.origin()
-        print "Unix time:  ", self.time()
-        print "commit date:", self.time("%Y%m%d")
-        print "hash:       ", self.hash()
-        print "short hash: ", self.hash(8)
-        print "branch:     ", self.branch()
-        print "commit tag: ", self.tag('')
-        print "dirty:      ", self.dirty('yes', 'no')
-        print "label:      ", self.label()
-        print "revision:   ", self.revision()
+        print("path:       ", self.path())
+        print("origin:     ", self.origin())
+        print("Unix time:  ", self.time())
+        print("commit date:", self.time("%Y%m%d"))
+        print("hash:       ", self.hash())
+        print("short hash: ", self.hash(8))
+        print("branch:     ", self.branch())
+        print("commit tag: ", self.tag(''))
+        print("dirty:      ", self.dirty('yes', 'no'))
+        print("label:      ", self.label())
+        print("revision:   ", self.revision())
 
     def save_to_json(self, path):
         """Saves the repo data to version-info.json"""
@@ -319,7 +320,7 @@ def file_from_template(tpl_name, out_name, dictionary):
     tf.close()
 
     # Replace placeholders using dictionary
-    out = Template(tpl).substitute(dictionary)
+    out = Template(tpl.decode('utf-8')).substitute(dictionary).encode('utf-8')
 
     write_if_different(out_name, out)
 
@@ -333,7 +334,7 @@ def sha1(file):
         with open(file, 'rb') as f:
             for chunk in iter(lambda: f.read(8192), ''):
                 sha1.update(chunk)
-        hex_stream = lambda s:",".join(['0x'+hex(ord(c))[2:].zfill(2) for c in s])
+        hex_stream = lambda s:",".join(['0x'+hex(c)[2:].zfill(2) for c in s])
         return hex_stream(sha1.digest())
 
 def xtrim(string, suffix, length):
@@ -368,7 +369,7 @@ def get_hash_of_dirs(directory, verbose = 0, raw = 0, n = 40):
             for names in files:
                 if names.endswith('.xml'):
                     if verbose == 1:
-                        print 'Hashing', names
+                        print('Hashing', names)
                     filepath = os.path.join(root, names)
                     try:
                         f1 = open(filepath, 'rU')
@@ -387,7 +388,7 @@ def get_hash_of_dirs(directory, verbose = 0, raw = 0, n = 40):
                     f1.close()
 
                     if verbose == 1:
-                        print 'Hash is', f1hash.hexdigest()
+                        print('Hash is', f1hash.hexdigest())
 
                     # Append the hex representation of the current file's hash into the cumulative hash
                     SHAhash.update(f1hash.hexdigest())
@@ -399,12 +400,12 @@ def get_hash_of_dirs(directory, verbose = 0, raw = 0, n = 40):
         return -2
 
     if verbose == 1:
-        print 'Final hash is', SHAhash.hexdigest()
+        print('Final hash is', SHAhash.hexdigest())
 
     if raw == 1:
         return SHAhash.hexdigest()[:n]
     else:
-        hex_stream = lambda s:",".join(['0x'+hex(ord(c))[2:].zfill(2) for c in s])
+        hex_stream = lambda s:",".join(['0x'+hex(c)[2:].zfill(2) for c in s])
         return hex_stream(SHAhash.digest())
 
 def main():
@@ -526,7 +527,7 @@ string given.
         escape_dict(dictionary)
 
     if args.format != None:
-        print Template(args.format).substitute(dictionary)
+        print(Template(args.format).substitute(dictionary))
 
     if args.outfile != None:
         file_from_template(args.template, args.outfile, dictionary)
