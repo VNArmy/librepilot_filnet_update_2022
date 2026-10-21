@@ -668,9 +668,20 @@ public:
         }
         if (needToDoFrame) {
             // qDebug() << "ViewportRenderer::synchronize - update scene" << h->frameCount;
+
+            // OSG traversals make their GL context current and release it when done.
+            // Restore Qt Quick's context afterwards, otherwise createFramebufferObject(),
+            // called right after synchronize(), finds no current context.
+            QOpenGLContext *qtContext = QOpenGLContext::currentContext();
+            QSurface *qtSurface = qtContext ? qtContext->surface() : NULL;
+
             h->viewer->advance();
             h->viewer->eventTraversal();
             h->viewer->updateTraversal();
+
+            if (qtContext && qtSurface && QOpenGLContext::currentContext() != qtContext) {
+                qtContext->makeCurrent(qtSurface);
+            }
         }
 
         // refresh busy state
@@ -697,7 +708,17 @@ public:
             // needed to properly render models without terrain (Qt bug?)
             QOpenGLContext::currentContext()->functions()->glUseProgram(0);
 
+            // Same as in synchronize(): OSG releases its context after rendering, and
+            // QSGRenderer::renderScene() crashes in QOpenGLContext::functions() if Qt
+            // Quick's context is not current again when render() returns.
+            QOpenGLContext *qtContext = QOpenGLContext::currentContext();
+            QSurface *qtSurface = qtContext ? qtContext->surface() : NULL;
+
             h->viewer->renderingTraversals();
+
+            if (qtContext && qtSurface && QOpenGLContext::currentContext() != qtContext) {
+                qtContext->makeCurrent(qtSurface);
+            }
 
             needToDoFrame = false;
         }
@@ -713,6 +734,19 @@ public:
 
     QOpenGLFramebufferObject *createFramebufferObject(const QSize &size)
     {
+        // Switching to Model View / Earth View can reach here with no current context
+        // (QOpenGLFramebufferObject then crashes on a null shareGroup).
+        // makeCurrent(window) fails for a QQuickWidget's offscreen window, so use the
+        // context's own surface.
+        if (!QOpenGLContext::currentContext()) {
+            QQuickWindow *win = h->self->window();
+            QOpenGLContext *winContext = win ? win->openglContext() : NULL;
+            QSurface *ctxSurface = winContext ? winContext->surface() : NULL;
+            if (ctxSurface) {
+                winContext->makeCurrent(ctxSurface);
+            }
+        }
+
         QOpenGLFramebufferObjectFormat format;
 
         format.setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);

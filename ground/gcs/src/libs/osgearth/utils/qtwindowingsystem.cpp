@@ -212,10 +212,16 @@ bool GraphicsWindowQt::realizeImplementation()
         }
     }
 
-    QOpenGLContext *currentContext = QOpenGLContext::currentContext();
+    QOpenGLContext *ambientContext = QOpenGLContext::currentContext();
 
-    if (!currentContext) {
-        // qDebug() << "GraphicsWindowQt::realizeImplementation - creating owned context";
+    if (ambientContext) {
+        // Share Qt Quick's current context so OSG renders into the FBO that
+        // QQuickFramebufferObject has bound in that context.
+        // _owned is reset explicitly: a GC that was realized as owned, closed, then
+        // realized again with an ambient context must not delete Qt's context on close.
+        _owned     = false;
+        _glContext = ambientContext;
+    } else {
         _owned     = true;
         _glContext = new QOpenGLContext();
         _glContext->create();
@@ -225,9 +231,6 @@ bool GraphicsWindowQt::realizeImplementation()
 #ifdef OSG_VERBOSE
         osgQtQuick::formatInfo(_surface->format());
 #endif
-    } else {
-        // qDebug() << "GraphicsWindowQt::realizeImplementation - using current context";
-        _glContext = currentContext;
     }
 
     //// initialize GL context for the widget
@@ -298,8 +301,12 @@ bool GraphicsWindowQt::makeCurrentImplementation()
         qWarning() << "GraphicsWindowQt::makeCurrentImplementation() - not realized; cannot make current.";
         return false;
     }
-    if (_owned) {
-        if (!_glContext->makeCurrent(_surface)) {
+    if (_glContext != QOpenGLContext::currentContext()) {
+        // Shared (not owned) contexts were previously never re-made current, which produced
+        // "context is not current" and a black viewport. Use the context's own surface for
+        // shared contexts and the offscreen surface for owned ones.
+        QSurface *surface = _owned ? static_cast<QSurface *>(_surface) : _glContext->surface();
+        if (!surface || !_glContext->makeCurrent(surface)) {
             qWarning() << "GraphicsWindowQt::makeCurrentImplementation : failed to make context current";
             return false;
         }
