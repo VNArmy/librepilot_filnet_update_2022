@@ -383,6 +383,18 @@ int runApplication(int argc, char * *argv)
     QCoreApplication::setApplicationName(APP_NAME);
     QCoreApplication::setOrganizationName(ORG_NAME);
 
+    // Let OSG find osgPlugins-<version>/ and the osgEarth plugins bundled in
+    // lib/librepilot-gcs next to bin/, wherever the package was extracted.
+    {
+        QString libDir = QDir::cleanPath(app.applicationDirPath() + QLatin1String("/../lib/librepilot-gcs"));
+        QByteArray existing = qgetenv("OSG_LIBRARY_PATH");
+        QByteArray updated  = libDir.toLocal8Bit();
+        if (!existing.isEmpty()) {
+            updated += ":" + existing;
+        }
+        qputenv("OSG_LIBRARY_PATH", updated);
+    }
+
     // initialize the plugin manager
     ExtensionSystem::PluginManager pluginManager;
     pluginManager.setFileExtension(QLatin1String("pluginspec"));
