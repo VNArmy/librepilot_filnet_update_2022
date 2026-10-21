@@ -95,12 +95,16 @@ void PfdQmlGadgetWidget::loadConfiguration(PfdQmlGadgetConfiguration *config)
 
 void PfdQmlGadgetWidget::saveState(QSettings &settings) const
 {
-    m_pfdQmlContext->saveState(settings);
+    if (m_pfdQmlContext) {
+        m_pfdQmlContext->saveState(settings);
+    }
 }
 
 void PfdQmlGadgetWidget::restoreState(QSettings &settings)
 {
-    m_pfdQmlContext->restoreState(settings);
+    if (m_pfdQmlContext) {
+        m_pfdQmlContext->restoreState(settings);
+    }
 }
 
 void PfdQmlGadgetWidget::setQmlFile(QString fn)
