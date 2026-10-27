@@ -312,6 +312,16 @@ gcs_clean:
 	@$(ECHO) " CLEAN      $(call toprel, $(GCS_DIR))"
 	$(V1) [ ! -d "$(GCS_DIR)" ] || $(RM) -r "$(GCS_DIR)"
 
+ifeq ($(UNAME), Linux)
+.PHONY: gcs_bundle_osg
+gcs_bundle_osg: gcs
+	@$(ECHO) " BUNDLE     $(call toprel, $(GCS_DIR))"
+	$(V1) OSG_SDK_DIR="$(OSG_SDK_DIR)" OSGEARTH_SDK_DIR="$(OSGEARTH_SDK_DIR)" \
+	    OSG_VERSION="$(OSG_VERSION)" GCS_DIR="$(GCS_DIR)" \
+	    GCS_SMALL_NAME="$(GCS_SMALL_NAME)" DL_DIR="$(DL_DIR)" \
+	    $(SHELL) $(ROOT_DIR)/make/scripts/gcs-bundle-osg-linux.sh
+endif
+
 
 
 ################################
@@ -737,6 +747,8 @@ help:
 	@$(ECHO) "     gcs_qmake            - Run qmake for the Ground Control System (GCS) application (debug|release)"
 	@$(ECHO) "     gcs_clean            - Remove the Ground Control System (GCS) application (debug|release)"
 	@$(ECHO) "                            Supported build configurations: GCS_BUILD_CONF=debug|release (default is $(GCS_BUILD_CONF))"
+	@$(ECHO) "     gcs_bundle_osg       - Linux only: copy OSG/osgEarth into the GCS build and pack bin, lib"
+	@$(ECHO) "                            and share into a standalone tar.gz in the GCS build directory"
 	@$(ECHO)
 	@$(ECHO) "   [Uploader Tool]"
 	@$(ECHO) "     uploader             - Build the serial uploader tool (debug|release)"
