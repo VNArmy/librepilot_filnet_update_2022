@@ -6,7 +6,9 @@ Nhánh: `ubuntu24-qt515-osgearth`, tách từ `master` @ `35e84b70` ("update OSG
 
 GCS build được trên Ubuntu 24.04 với Qt 5.15.13 của hệ thống, GCC 13.3, OSG 3.5.5 và osgEarth 2.8. Đã chạy "tạm ổn" trên Ubuntu (máy thật, VirtualBox) và WSL2.
 
-Nhánh này chỉ chứa thay đổi mã nguồn và tài liệu. Bản nhị phân (khoảng 103 MB) không được commit vì vượt giới hạn 100 MB/file của GitHub và không nên nằm trong lịch sử git. Nếu cần phát hành, đưa file `.tar.gz` lên GitHub Releases.
+Nhánh này chỉ chứa thay đổi mã nguồn và tài liệu. Bản nhị phân không được commit vì không nên nằm trong lịch sử git (bản đầu khoảng 103 MB, vượt giới hạn 100 MB/file của GitHub; bản build 2026-10-27 là 82,7 MB). Nếu cần phát hành, đưa file `.tar.gz` lên GitHub Releases.
+
+Build lại ngày 2026-10-27 trên WSL2 Ubuntu 24.04.5 từ commit `25e8c0a5`, theo đúng mục 2 đến 6: không có lỗi biên dịch, bản giải nén qua bước kiểm tra ở mục 6 (chạy offscreen). Đóng gói giờ dùng `make gcs_bundle_osg` (mục 6).
 
 Còn mở:
 
@@ -48,6 +50,9 @@ sudo apt-get install -y build-essential git curl gdb wget debhelper p7zip-full \
   qml-module-qtquick-layouts qml-module-qtqml-models2 patchelf cmake \
   libgdal-dev libgeos-dev libcurl4-openssl-dev libsqlite3-dev libpng-dev zlib1g-dev
 ```
+
+- WSL2: build trong filesystem ext4 của distro (ví dụ `~/librepilot`), không build trên `/mnt/<ổ>`. File `ext4.vhdx` của distro mặc định nằm trên C:. Lần build 2026-10-27 (gói apt, OSG, osgEarth, GCS, đóng gói) làm distro dùng 5,4 GB và vhdx lớn tới 6,2 GB. Ổ chứa vhdx hết chỗ thì ext4 bên trong hỏng (mục 8 dòng 19).
+- Máy có ít bộ nhớ ảo trống (RAM 16 GB, VM WSL nhận khoảng 7,8 GB, C: gần đầy) phải giảm `-j`: `-j6` làm VM WSL bị tắt ngang (mục 8 dòng 20), còn `-j3` build xong cả osgEarth lẫn GCS.
 
 ## 3. Thay đổi mã nguồn trong nhánh này
 
@@ -140,45 +145,28 @@ Nếu đổi `osgearth_dependencies.pri`, xoá `libGCSOsgEarth.so*` cũ trong bu
 
 ## 6. Đóng gói bản chạy độc lập
 
-Makefile không tự copy OSG/osgEarth vào bản build. Các bước đã dùng (chạy từ thư mục repo):
+Makefile không tự copy OSG/osgEarth vào bản build, nên có target riêng (chỉ trên Linux):
 
 ```bash
-OSG=$PWD/tools/osg-3.5.5-linux-x64
-OSGE=$PWD/tools/osgearth-2.8-linux-x64
-REL=$PWD/build/librepilot-gcs_release
-DEST=$REL/lib/librepilot-gcs
-
-# 6.1 thư viện lõi OSG + osgEarth, cùng thư mục với libGCSOsgEarth
-cp -a $OSG/lib64/*.so* $OSGE/lib64/*.so* $DEST/
-cd $DEST
-for f in libosg*.so* libOpenThreads.so* libosgEarth*.so*; do
-  [ -f "$f" ] && [ ! -L "$f" ] && patchelf --set-rpath '$ORIGIN' "$f"
-done
-# 6.2 plugin osgEarth (osgdb_earth.so, osgdb_osgearth_*.so) nằm cạnh lib lõi
-for f in osgdb_earth.so osgdb_osgearth_*.so; do patchelf --set-rpath '$ORIGIN' "$f"; done
-
-# 6.3 plugin đọc file của OSG (89 plugin: .3ds, .png, .osg, ...)
-mkdir -p $DEST/osgPlugins-3.5.5
-cp $OSG/lib64/osgPlugins-3.5.5/*.so $DEST/osgPlugins-3.5.5/
-for f in $DEST/osgPlugins-3.5.5/*.so; do patchelf --set-rpath '$ORIGIN/..' "$f"; done
-
-# 6.4 osgdb_png.so build sẵn cần libpng12 (không còn trên 24.04): build lại từ OSG 3.6.5
-git clone --branch OpenSceneGraph-3.6.5 --depth 1 --filter=blob:none --sparse \
-  https://github.com/openscenegraph/osg.git osg-src
-(cd osg-src && git sparse-checkout set src/osgPlugins/png)
-g++ -std=c++11 -fPIC -shared -O2 -I$OSG/include \
-  osg-src/src/osgPlugins/png/ReaderWriterPNG.cpp -o $DEST/osgPlugins-3.5.5/osgdb_png.so \
-  -L$OSG/lib64 -losg -losgDB -lOpenThreads -lpng -lz -Wl,-rpath,'$ORIGIN/..'
-
-# 6.5 shader/resource của osgEarth
-mkdir -p $REL/share/librepilot-gcs/osgearth-resources
-cp -r $OSGE/resources/* $REL/share/librepilot-gcs/osgearth-resources/
-
-# 6.6 nén, phải gồm đủ bin + lib + share
-cd $REL && tar -czf librepilot-gcs-with-osgearth-linux-x86_64.tar.gz bin lib share
+make gcs_bundle_osg
+# kết quả: build/librepilot-gcs_release/librepilot-gcs-with-osgearth-linux-x86_64.tar.gz
 ```
 
+Target này chạy `make gcs` trước, rồi gọi `make/scripts/gcs-bundle-osg-linux.sh` với `OSG_SDK_DIR` / `OSGEARTH_SDK_DIR` của `make/tools.mk`. Script làm các bước trước đây phải chạy tay:
+
+1. Copy thư viện lõi OSG và osgEarth (`lib64/*.so*`) vào `lib/librepilot-gcs`, cùng thư mục với `libGCSOsgEarth`, rồi `patchelf --set-rpath '$ORIGIN'`.
+2. Copy plugin osgEarth (`osgdb_earth.so`, `osgdb_osgearth_*.so`, `osgdb_kml.so`, ...; 55 file) vào cùng thư mục đó, rpath `$ORIGIN`. osgEarth build từ source theo mục 4.2 cài các plugin này vào `lib64/osgPlugins-3.5.5/` chứ không phải `lib64/`, nên bản hướng dẫn tay trước đây (chỉ copy `lib64/*.so*`) bỏ sót chúng.
+3. Copy 89 plugin đọc file của OSG (.3ds, .png, .osg, ...) vào `lib/librepilot-gcs/osgPlugins-3.5.5/`, rpath `$ORIGIN/..`.
+4. Build lại `osgdb_png.so` từ source OSG 3.6.5, vì bản build sẵn cần libpng12 mà 24.04 không còn. Source được sparse clone vào `downloads/osg-3.6.5-png-src`, chỉ clone ở lần chạy đầu. Lệnh link có thêm `-Wl,-rpath-link` tới `lib64` của OSG để `ld` tìm được các phụ thuộc gián tiếp của `libosgDB` mà không cần `LD_LIBRARY_PATH`.
+5. Copy shader/resource của osgEarth vào `share/librepilot-gcs/osgearth-resources`.
+6. Nén `bin lib share` (thiếu `lib` thì bản chạy hỏng, xem mục 8 dòng 3).
+
+Chạy lại target nhiều lần được. Vì target build `gcs` trước, nếu cây mã có thay đổi chưa commit thì `libVersionInfo` được build lại với nhãn `-dirty`; nên commit trước khi đóng gói bản phát hành. Ngày 2026-10-27, file nén do target tạo ra trùng từng byte với bản đóng gói tay đã kiểm tra (806 mục), chỉ khác `libVersionInfo` vì nhãn `-dirty`.
+
 Kiểm tra trước khi phát hành: giải nén ra thư mục mới, `unset LD_LIBRARY_PATH OSG_LIBRARY_PATH`, dlopen từng plugin GCS và OSG (ví dụ `python3 -c "import ctypes; ctypes.CDLL('lib/librepilot-gcs/plugins/LibrePilot/libPfdQml.so')"`), rồi chạy `QT_QPA_PLATFORM=offscreen ./bin/librepilot-gcs` và grep log tìm `file not handled` / `context is not current`. Chỉ chạy `-version` thì chưa đủ để kết luận.
+
+- Kết quả ngày 2026-10-27: dlopen 206 file OK, 5 lỗi, đúng là 5 plugin OSG lệch ABI ở mục 9 (`osgdb_curl`, `osgdb_gdal`, `osgdb_jp2`, `osgdb_ogr`, `osgdb_tiff`). GCS khởi động trong khoảng 2 giây, PFD load được, log không có `file not handled`, `context is not current` hay `cannot open shared object`. Bước này không mở Model View / Earth View, nên chưa nói được gì về việc chúng render đúng.
+- GCS không thoát khi nhận SIGTERM. Dùng `timeout -k 5 40 ./librepilot-gcs` để tiến trình chắc chắn bị kill; `timeout 40` không có `-k` sẽ treo.
 
 ## 7. Cài đặt và chạy trên máy người dùng (Ubuntu 24.04 / WSL2)
 
@@ -246,6 +234,9 @@ Muốn dùng USB trên WSL2 phải build kernel WSL2 tuỳ chỉnh bật HIDRAW 
 | 16 | Crash `createFramebufferObject` (shareGroup null) khi chuyển sang Model/Earth View | Không có context current sau traversal | Khôi phục context, fallback `makeCurrent(surface())` |
 | 17 | Crash `QSGRenderer::renderScene` | OSG nhả context sau `renderingTraversals` | Lưu/khôi phục context trong `render()` |
 | 18 | Hết crash nhưng view trống | Hướng thử "luôn tạo context riêng" làm OSG vẽ ngoài FBO | Quay lại dùng chung context (mục 4.3) |
+| 19 | `Input/output error`, `getpwnam(root) failed` trong WSL giữa lúc `apt install` | Ổ C: chứa `ext4.vhdx` của distro hết chỗ | Chuyển distro sang ổ khác (`wsl --manage <distro> --move <thư mục>`), `wsl --shutdown`, `dpkg --configure -a`, cài lại gói bị cài dở |
+| 20 | VM WSL tắt ngang khi build osgEarth, cuối file log toàn byte 0 | Build `-j6`, Windows hết bộ nhớ ảo ("Virtual Memory Minimum Too Low") vì C: gần đầy nên pagefile không lớn thêm được | Build `-j3`; xoá các file build ghi sau thời điểm VM tắt rồi build tiếp |
+| 21 | Không có plugin osgEarth nào trong `lib64/` của bản cài osgEarth, bước 6.2 cũ không có gì để patch | osgEarth build từ source cài plugin vào `lib64/osgPlugins-3.5.5/` | `make gcs_bundle_osg` copy plugin từ thư mục đó (mục 6) |
 
 Rút kinh nghiệm từ quá trình này: thêm log chẩn đoán trước khi đoán cách sửa, và chỉ kết luận "đã kiểm tra" sau khi dlopen/chạy thật từ bản giải nén mới.
 
@@ -262,6 +253,6 @@ Rút kinh nghiệm từ quá trình này: thêm log chẩn đoán trước khi �
 ## 10. Việc nên làm tiếp
 
 1. Xác nhận Model View và Earth View render đúng trên máy thật với bản build từ nhánh này.
-2. Viết script đóng gói từ mục 6 thành target Makefile (ví dụ `make gcs_bundle_osg`) để khỏi chạy tay.
+2. Xong (2026-10-27): đóng gói bằng `make gcs_bundle_osg` (mục 6).
 3. Build lại các plugin OSG bị lệch ABI (tiff, gdal, curl) từ source OSG 3.6.5 theo cách đã làm với `osgdb_png`, hoặc chuyển hẳn sang OSG 3.6.5 của apt.
 4. Đưa bản nhị phân lên GitHub Releases.
