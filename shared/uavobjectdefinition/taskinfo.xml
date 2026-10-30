@@ -37,6 +37,7 @@
 			<elementname>UAVOMAVLinkBridge</elementname>
 			<elementname>FrSkySPortTelemetry</elementname>
                         <elementname>AutoTune</elementname>
+			<elementname>VisionTracker</elementname>
 		</elementnames>
 	</field> 
 	<field name="Running" units="bool" type="enum">
@@ -75,6 +76,7 @@
 			<elementname>UAVOMAVLinkBridge</elementname>
 			<elementname>FrSkySPortTelemetry</elementname>
 			<elementname>AutoTune</elementname>
+			<elementname>VisionTracker</elementname>
 		</elementnames>
 		<options>
 			<option>False</option>
@@ -117,6 +119,7 @@
 			<elementname>UAVOMAVLinkBridge</elementname>
 			<elementname>FrSkySPortTelemetry</elementname>
 			<elementname>AutoTune</elementname>
+			<elementname>VisionTracker</elementname>
 		</elementnames>
 	</field> 
         <access gcs="readonly" flight="readwrite"/>

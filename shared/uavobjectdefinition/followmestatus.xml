@@ -1,0 +1,15 @@
+<xml>
+    <object name="FollowMeStatus" singleinstance="true" settings="false" category="Control">
+        <description>Status of the FollowMe flight mode controller.</description>
+        <field name="State" units="" type="enum" elements="1" options="NoData,Lost,Tracking" defaultvalue="NoData"/>
+        <field name="YawError" units="deg" type="float" elements="1" defaultvalue="0"/>
+        <field name="ElevationError" units="deg" type="float" elements="1" defaultvalue="0"/>
+        <field name="YawRateCmd" units="deg/s" type="float" elements="1" defaultvalue="0"/>
+        <field name="ClimbRateCmd" units="m/s" type="float" elements="1" defaultvalue="0"/>
+        <field name="AltitudeOffset" units="m" type="float" elements="1" defaultvalue="0" description="altitude relative to the altitude when entering the flight mode"/>
+        <access gcs="readwrite" flight="readwrite"/>
+        <telemetrygcs acked="false" updatemode="manual" period="0"/>
+        <telemetryflight acked="false" updatemode="throttled" period="250"/>
+        <logging updatemode="manual" period="0"/>
+    </object>
+</xml>

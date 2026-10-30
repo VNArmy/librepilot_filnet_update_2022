@@ -1,0 +1,21 @@
+<xml>
+    <object name="FollowMeSettings" singleinstance="true" settings="true" category="Control">
+        <description>Settings for the FollowMe flight mode, which keeps the object reported in @ref TrackingData centered in a fixed, forward looking camera by yawing and climbing/descending. The camera tilt does not matter because the object is kept in the image center.</description>
+        <field name="CameraFOV" units="deg" type="float" elementnames="Horizontal,Vertical" defaultvalue="80,60" description="field of view of the tracking camera"/>
+        <field name="YawPID" units="" type="float" elementnames="Kp,Kd" defaultvalue="1.0,0.05" description="yaw rate command (deg/s) per degree of horizontal angle to the object"/>
+        <field name="MaxYawRate" units="deg/s" type="float" elements="1" defaultvalue="30"/>
+        <field name="ElevationKp" units="(m/s)/deg" type="float" elements="1" defaultvalue="0.05" description="climb rate command per degree of vertical angle to the object"/>
+        <field name="ElevationDeadband" units="deg" type="float" elements="1" defaultvalue="2"/>
+        <field name="MaxClimbRate" units="m/s" type="float" elements="1" defaultvalue="0.3"/>
+        <field name="AltitudeWindow" units="m" type="float" elementnames="Descent,Climb" defaultvalue="1,3" description="maximum altitude change relative to the altitude when entering the flight mode"/>
+        <field name="MinConfidence" units="" type="float" elements="1" defaultvalue="0.4"/>
+        <field name="TrackTimeout" units="ms" type="uint16" elements="1" defaultvalue="300" description="the object counts as lost when no new tracking frame arrives within this time"/>
+        <field name="LostTimeout" units="ms" type="uint16" elements="1" defaultvalue="10000" description="time after losing the object before LostAction is applied"/>
+        <field name="LostAction" units="" type="enum" elements="1" options="Hover,Descend" defaultvalue="Hover"/>
+        <field name="LostDescentRate" units="m/s" type="float" elements="1" defaultvalue="0.3"/>
+        <access gcs="readwrite" flight="readwrite"/>
+        <telemetrygcs acked="true" updatemode="onchange" period="0"/>
+        <telemetryflight acked="true" updatemode="onchange" period="0"/>
+        <logging updatemode="manual" period="0"/>
+    </object>
+</xml>

@@ -81,6 +81,8 @@ UAVOBJS = \
     $${UAVOBJ_XML_DIR}/flightplanstatus.xml \
     $${UAVOBJ_XML_DIR}/flightstatus.xml \
     $${UAVOBJ_XML_DIR}/flighttelemetrystats.xml \
+    $${UAVOBJ_XML_DIR}/followmesettings.xml \
+    $${UAVOBJ_XML_DIR}/followmestatus.xml \
     $${UAVOBJ_XML_DIR}/frskysporttelemetrysettings.xml \
     $${UAVOBJ_XML_DIR}/gcsreceiver.xml \
     $${UAVOBJ_XML_DIR}/gcstelemetrystats.xml \
@@ -155,6 +157,7 @@ UAVOBJS = \
     $${UAVOBJ_XML_DIR}/taskinfo.xml \
     $${UAVOBJ_XML_DIR}/temperaturesettings.xml \
     $${UAVOBJ_XML_DIR}/temperaturestate.xml \
+    $${UAVOBJ_XML_DIR}/trackingdata.xml \
     $${UAVOBJ_XML_DIR}/txpidsettings.xml \
     $${UAVOBJ_XML_DIR}/txpidstatus.xml \
     $${UAVOBJ_XML_DIR}/velocitydesired.xml \

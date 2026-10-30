@@ -1,0 +1,20 @@
+<xml>
+    <object name="TrackingData" singleinstance="true" settings="false" category="Navigation">
+        <description>Latest object tracking result received from the companion computer by the @ref VisionTracker module.</description>
+        <field name="Valid" units="" type="enum" elements="1" options="False,True" defaultvalue="False"/>
+        <field name="Seq" units="" type="uint8" elements="1" defaultvalue="0"/>
+        <field name="TrackId" units="" type="uint16" elements="1" defaultvalue="0"/>
+        <field name="X" units="" type="float" elements="1" defaultvalue="0" description="bbox center, -1 left edge .. 1 right edge"/>
+        <field name="Y" units="" type="float" elements="1" defaultvalue="0" description="bbox center, -1 top edge .. 1 bottom edge"/>
+        <field name="Width" units="" type="float" elements="1" defaultvalue="0" description="bbox width relative to the image width"/>
+        <field name="Height" units="" type="float" elements="1" defaultvalue="0" description="bbox height relative to the image height"/>
+        <field name="Confidence" units="" type="float" elements="1" defaultvalue="0"/>
+        <field name="Distance" units="m" type="float" elements="1" defaultvalue="0" description="0 when unknown"/>
+        <field name="RxFrames" units="" type="uint32" elements="1" defaultvalue="0"/>
+        <field name="RxErrors" units="" type="uint32" elements="1" defaultvalue="0" description="frames dropped because of a CRC or length error"/>
+        <access gcs="readwrite" flight="readwrite"/>
+        <telemetrygcs acked="false" updatemode="manual" period="0"/>
+        <telemetryflight acked="false" updatemode="throttled" period="250"/>
+        <logging updatemode="manual" period="0"/>
+    </object>
+</xml>
