@@ -40,7 +40,8 @@ $(foreach src,$(ALLSRC),$(eval $(call COMPILE_C_TEMPLATE,$(src))))
 $(foreach src,$(ALLCPPSRC),$(eval $(call COMPILE_CXX_TEMPLATE,$(src))))
 
 # Specific extensions to CPPFLAGS only for the google test library
-$(OUTDIR)/gtest-all.o: CPPFLAGS += -I$(GTEST_SRC_DIR)/..
+# (third party code, gtest 1.7.0 triggers new warnings with recent compilers)
+$(OUTDIR)/gtest-all.o: CPPFLAGS += -I$(GTEST_SRC_DIR)/.. -Wno-error
 
 $(eval $(call COMPILE_CXX_TEMPLATE, $(GTEST_SRC_DIR)/gtest-all.cc))
 $(eval $(call LINK_CXX_TEMPLATE,$(OUTDIR)/$(TARGET).elf,$(ALLOBJ) $(OUTDIR)/gtest-all.o))

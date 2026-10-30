@@ -332,7 +332,7 @@ def sha1(file):
     else:
         sha1 = hashlib.sha1()
         with open(file, 'rb') as f:
-            for chunk in iter(lambda: f.read(8192), ''):
+            for chunk in iter(lambda: f.read(8192), b''):
                 sha1.update(chunk)
         hex_stream = lambda s:",".join(['0x'+hex(c)[2:].zfill(2) for c in s])
         return hex_stream(sha1.digest())
@@ -372,26 +372,24 @@ def get_hash_of_dirs(directory, verbose = 0, raw = 0, n = 40):
                         print('Hashing', names)
                     filepath = os.path.join(root, names)
                     try:
-                        f1 = open(filepath, 'rU')
+                        # newline='' keeps line endings so they can be normalized
+                        # below exactly like the former Python 2 'rU' mode did
+                        f1 = open(filepath, 'r', encoding='utf-8', newline='')
                     except:
                         # You can't open the file for some reason
                         continue
 
-                    # Compute file hash. Same as running "sha1sum <file>".
-                    f1hash = hashlib.sha1()
-                    while 1:
-                        # Read file in as little chunks
-                        buf = f1.read(4096)
-                        if not buf:
-                            break
-                        f1hash.update(buf)
+                    # Compute file hash. Same as running "sha1sum <file>" on the
+                    # file with universal newlines.
+                    data = f1.read().replace('\r\n', '\n').replace('\r', '\n')
                     f1.close()
+                    f1hash = hashlib.sha1(data.encode('utf-8'))
 
                     if verbose == 1:
                         print('Hash is', f1hash.hexdigest())
 
                     # Append the hex representation of the current file's hash into the cumulative hash
-                    SHAhash.update(f1hash.hexdigest())
+                    SHAhash.update(f1hash.hexdigest().encode('ascii'))
 
     except:
         import traceback
