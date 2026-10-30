@@ -448,7 +448,7 @@ function isVtolPathFollowerSettingsThrustAuto() {
 function flightModeName() {
     var flightModeNameText = ["MANUAL", "STAB 1", "STAB 2", "STAB 3", "STAB 4", "STAB 5", "STAB 6",
                               "POS HOLD", "COURSELOCK", "VEL ROAM", "HOME LEASH", "ABS POS", "RTB",
-                              "LAND", "PATHPLAN", "POI", "AUTOCRUISE", "AUTOTAKEOFF", "AUTOTUNE"];
+                              "LAND", "PATHPLAN", "POI", "AUTOCRUISE", "AUTOTAKEOFF", "AUTOTUNE", "FOLLOW ME"];
 
     if (flightModeNameText.length != FlightStatus.FlightStatusConstants.FlightModeCount) {
         console.log("uav.js: flightModeName() do not match flightStatus.flightMode uavo");
@@ -460,7 +460,7 @@ function flightModeName() {
 function flightModeColor() {
     var flightModeColorText = ["gray", "green", "green", "green", "green", "green", "green",
                                "cyan", "cyan", "cyan", "cyan", "cyan", "cyan",
-                               "cyan", "cyan", "cyan", "cyan", "cyan", "cyan"];
+                               "cyan", "cyan", "cyan", "cyan", "cyan", "cyan", "cyan"];
 
     if (flightModeColorText.length != FlightStatus.FlightStatusConstants.FlightModeCount) {
         console.log("uav.js: flightModeColor() do not match flightStatus.flightMode uavo");

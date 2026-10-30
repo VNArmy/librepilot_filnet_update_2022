@@ -277,6 +277,18 @@ void ConfigRevoHWWidget::flexiPortChanged(int index)
             setComboboxSelectedOption(m_ui->cbRcvr, HwSettings::RM_RCVRPORT_PPM);
         }
         break;
+    case HwSettings::RM_FLEXIPORT_VISIONTRACKER:
+        m_ui->lblFlexiSpeed->setVisible(false);
+        if (isComboboxOptionSelected(m_ui->cbMain, HwSettings::RM_MAINPORT_VISIONTRACKER)) {
+            setComboboxSelectedOption(m_ui->cbMain, HwSettings::RM_MAINPORT_DISABLED);
+        }
+        if (isComboboxOptionSelected(m_ui->cbRcvr, HwSettings::RM_RCVRPORT_VISIONTRACKER)) {
+            setComboboxSelectedOption(m_ui->cbRcvr, HwSettings::RM_RCVRPORT_DISABLED);
+        }
+        if (isComboboxOptionSelected(m_ui->cbRcvr, HwSettings::RM_RCVRPORT_PPMVISIONTRACKER)) {
+            setComboboxSelectedOption(m_ui->cbRcvr, HwSettings::RM_RCVRPORT_PPM);
+        }
+        break;
     default:
         m_ui->lblFlexiSpeed->setVisible(false);
         break;
@@ -381,6 +393,18 @@ void ConfigRevoHWWidget::mainPortChanged(int index)
             setComboboxSelectedOption(m_ui->cbRcvr, HwSettings::RM_RCVRPORT_PPM);
         }
         break;
+    case HwSettings::RM_MAINPORT_VISIONTRACKER:
+        m_ui->lblMainSpeed->setVisible(false);
+        if (isComboboxOptionSelected(m_ui->cbFlexi, HwSettings::RM_FLEXIPORT_VISIONTRACKER)) {
+            setComboboxSelectedOption(m_ui->cbFlexi, HwSettings::RM_FLEXIPORT_DISABLED);
+        }
+        if (isComboboxOptionSelected(m_ui->cbRcvr, HwSettings::RM_RCVRPORT_VISIONTRACKER)) {
+            setComboboxSelectedOption(m_ui->cbRcvr, HwSettings::RM_RCVRPORT_DISABLED);
+        }
+        if (isComboboxOptionSelected(m_ui->cbRcvr, HwSettings::RM_RCVRPORT_PPMVISIONTRACKER)) {
+            setComboboxSelectedOption(m_ui->cbRcvr, HwSettings::RM_RCVRPORT_PPM);
+        }
+        break;
     default:
         m_ui->lblMainSpeed->setVisible(false);
         break;
@@ -461,6 +485,16 @@ void ConfigRevoHWWidget::rcvrPortChanged(int index)
             setComboboxSelectedOption(m_ui->cbFlexi, HwSettings::RM_FLEXIPORT_DISABLED);
         }
         if (isComboboxOptionSelected(m_ui->cbMain, HwSettings::RM_MAINPORT_MAVLINK)) {
+            setComboboxSelectedOption(m_ui->cbMain, HwSettings::RM_MAINPORT_DISABLED);
+        }
+        break;
+    case HwSettings::RM_RCVRPORT_VISIONTRACKER:
+    case HwSettings::RM_RCVRPORT_PPMVISIONTRACKER:
+        m_ui->lblRcvrSpeed->setVisible(false);
+        if (isComboboxOptionSelected(m_ui->cbFlexi, HwSettings::RM_FLEXIPORT_VISIONTRACKER)) {
+            setComboboxSelectedOption(m_ui->cbFlexi, HwSettings::RM_FLEXIPORT_DISABLED);
+        }
+        if (isComboboxOptionSelected(m_ui->cbMain, HwSettings::RM_MAINPORT_VISIONTRACKER)) {
             setComboboxSelectedOption(m_ui->cbMain, HwSettings::RM_MAINPORT_DISABLED);
         }
         break;
