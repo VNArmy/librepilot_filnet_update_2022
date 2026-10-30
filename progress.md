@@ -16,6 +16,8 @@ Còn mở:
 - USB trên WSL2 chưa dùng được (mục 7).
 - Danh sách hạn chế khác ở mục 9.
 
+Nhánh `feature/visiontracker-followme` thêm flight mode FollowMe nhận dữ liệu tracking qua UART (mục 11). Đã build và unit test, chưa thử trên phần cứng.
+
 ## 1. Nguồn mã
 
 | Nguồn | Kết quả |
@@ -256,3 +258,85 @@ Rút kinh nghiệm từ quá trình này: thêm log chẩn đoán trước khi �
 2. Xong (2026-10-27): đóng gói bằng `make gcs_bundle_osg` (mục 6).
 3. Build lại các plugin OSG bị lệch ABI (tiff, gdal, curl) từ source OSG 3.6.5 theo cách đã làm với `osgdb_png`, hoặc chuyển hẳn sang OSG 3.6.5 của apt.
 4. Đưa bản nhị phân lên GitHub Releases.
+
+## 11. Flight mode FollowMe với vision tracker qua UART
+
+Nhánh `feature/visiontracker-followme`, tách từ `ubuntu24-qt515-osgearth` @ `70ba9764`.
+
+### 11.1 Mục tiêu
+
+Companion computer (camera + YOLO, project riêng) gửi vị trí bounding box của đối tượng qua UART. Trong flight mode **FollowMe**, FC tự giữ đối tượng ở giữa khung hình. Phi công không điều khiển gì: stick và ga đều bị bỏ qua, chỉ dùng switch để vào hoặc thoát mode.
+
+Phạm vi: multirotor, bay trong nhà, không GPS, camera gắn cố định nhìn về trước. Chưa giữ khoảng cách tới đối tượng.
+
+### 11.2 Luật điều khiển (`flight/modules/ManualControl/followmehandler.c`)
+
+| Trục | Lệnh gửi vào Stabilization | Tính từ |
+|---|---|---|
+| Yaw | `RATE` | `Kp·e + Kd·ȧx`, kẹp bởi `MaxYawRate`. `ax = atan(X·tan(HFOV/2))`, `e = ax − (yaw hiện tại − yaw lúc nhận frame)`. |
+| Thrust | `ALTITUDEVARIO` | Sai số dọc `pitch − atan(Y·tan(VFOV/2))`, trừ deadband, nhân `ElevationKp`, kẹp bởi `MaxClimbRate` và cửa sổ độ cao quanh lúc vào mode. Đổi tốc độ leo thành "ga ảo" bằng cách giải ngược đường cong vario của `altitudeloop.cpp`, ga ảo luôn ≥ 0,05 để không kích hoạt `CutThrustWhenZero`. |
+| Roll / Pitch | `ATTITUDE` = 0 | Giữ thân ngang. |
+
+- Góc chúc của camera bị triệt tiêu khi mục tiêu là giữ đối tượng ở giữa ảnh, vì vậy không có setting `CameraTilt`.
+- Frame tới khoảng 20–30 Hz, còn handler chạy 50 Hz. Giữa hai frame, sai số yaw được bù bằng góc yaw đã quay kể từ frame cuối.
+- Mất track (cờ valid = 0, confidence < `MinConfidence`, hoặc quá `TrackTimeout` không có frame mới): yaw rate = 0, giữ độ cao. Sau `LostTimeout`, nếu `LostAction = Descend` thì hạ với `LostDescentRate`, không giới hạn bởi cửa sổ độ cao (tức là hạ cánh).
+- `FollowMeStatus` báo `State` (NoData / Lost / Tracking), các sai số, lệnh yaw rate, lệnh leo và độ cao so với lúc vào mode.
+
+### 11.3 Giao thức UART
+
+Đặc tả cho phía companion nằm ở `flight/modules/VisionTracker/PROTOCOL.md`. Tóm tắt: frame `A5 5A | id | len | payload | crc8` (CRC8 của UAVTalk). `0x01` TRACK (companion → FC), `0x81` FC_STATUS (FC → companion, 5 Hz).
+
+Công cụ Python (không cần FC để thử parser):
+
+- `python/visiontracker/vt_protocol.py`: encode/decode, dùng chung bảng CRC với FC.
+- `python/visiontracker/vt_sim.py`: giả lập companion, gửi TRACK 20 Hz với mục tiêu dao động hình sin. Có `--static X Y`, `--drop EVERY:DURATION`, `--garbage PROB`, và in ra các FC_STATUS nhận được. Cần `pyserial`.
+
+### 11.4 File thay đổi
+
+| Nhóm | File |
+|---|---|
+| UAVO | `flightstatus.xml`, `flightmodesettings.xml` (thêm `FollowMe` vào cuối enum), `hwsettings.xml` (port `VisionTracker`, `PPM+VisionTracker`, `VisionTrackerSpeed`), `taskinfo.xml` (task `VisionTracker`), mới: `trackingdata.xml`, `followmesettings.xml`, `followmestatus.xml`; `UAVObjects.inc` của các board; `uavobjects.pro` của GCS. |
+| Cổng UART | `pios_board_io.h/.c` (`PIOS_BOARD_IO_UART_VISIONTRACKER`), `revolution/firmware/pios_board.c` (Main, Flexi, Rcvr). |
+| Module | `flight/modules/VisionTracker/` (`visiontracker.c`, `vtparser.c`, `inc/`), chỉ có trong `OPTMODULES` của Revolution. |
+| Flight mode | `followmehandler.c`, `manualcontrol.c`, `inc/manualcontrol.h`. |
+| An toàn | `armhandler.c`: không tự disarm do ga thấp khi đang ở FollowMe, vì ga bị bỏ qua. `sanitycheck.c`: FollowMe chỉ hợp lệ khi firmware có module VisionTracker, khung là multirotor và slot đó không bật GPSAssist. |
+| Hiển thị | `Notify/inc/sequences.h`, `libraries/notification.c`, `UAVOMavlinkBridge.c` (`CUSTOM_MODE_GUIDED`), `uavohottbridge.c`, GCS `uav.js` (PFD hiện "FOLLOW ME"), `configrevohwwidget.cpp` (mỗi lúc chỉ một cổng được chọn VisionTracker). |
+| Test | `flight/tests/visiontracker/` (11 test của parser, gồm cả vector tạo bằng Python). |
+| Build | `make/scripts/version-info.py`, `flight/make/unittest.mk` (xem 11.6). |
+
+### 11.5 Cấu hình và nâng cấp
+
+ID của `FlightStatus`, `FlightModeSettings`, `HwSettings` và `TaskInfo` đổi vì enum có thêm phần tử. Firmware và GCS phải cùng bản build. Quy trình:
+
+1. Bằng GCS cũ: File → Export UAV Settings.
+2. Flash firmware mới bằng GCS mới.
+3. Import lại settings rồi kiểm tra lại các trang cấu hình.
+
+Cấu hình FollowMe:
+
+1. Hardware: chọn `VisionTracker` cho Main, Flexi hoặc Rcvr (`PPM+VisionTracker` nếu vẫn dùng PPM trên cổng Rcvr), rồi reboot board. Tốc độ mặc định là 115200; đổi `HwSettings.VisionTrackerSpeed` trong UAVObject Browser nếu cần (trang Hardware chưa có ô chọn tốc độ cho chức năng này).
+2. Input → Flight Mode Switch Settings: gán `FollowMe` cho một vị trí switch, không bật Assisted Control cho vị trí đó.
+3. `FollowMeSettings` (UAVObject Browser): đặt `CameraFOV` đúng với camera thật; giữ gain mặc định cho lần bay đầu.
+4. `AltitudeHoldSettings` phải đã được tinh chỉnh (FollowMe dùng vòng giữ độ cao của AltitudeVario).
+5. Đặt `ManualControlSettings.FailsafeFlightModeSwitchPosition` về một vị trí an toàn. Nếu để -1 thì khi mất RC, drone vẫn ở FollowMe và tiếp tục bám theo, vì FollowMe không dùng stick.
+
+Không arm được khi switch đang ở FollowMe. Quy trình bay: arm và cất cánh ở chế độ Stabilized (hoặc AltitudeVario), hover ổn định rồi mới gạt sang FollowMe.
+
+### 11.6 Kiểm tra đã làm (2026-10-30, WSL2 Ubuntu 24.04)
+
+- `make ut_visiontracker`: 11/11 test pass.
+- Firmware build không lỗi, không có warning mới: `fw_revolution`, `fw_revonano`, `fw_sparky2`, `fw_discoveryf4bare`, `fw_ccf3d`, `fw_spracingf3evo`, `fw_simposix`. Chỉ `fw_revolution` có module VisionTracker; các board còn lại có handler FollowMe nhưng sanity check chặn chọn mode này.
+- Kích thước `fw_revolution`: text 280 744 byte. Phần thêm vào khoảng 3 KB flash (`followMeHandler` 1,4 KB, task VisionTracker 0,5 KB, parser 0,4 KB, phần còn lại là code UAVO) và khoảng 110 byte RAM tĩnh. Trên heap còn có buffer UART 160 byte (chỉ khi cổng được chọn), stack 512 byte của task và dữ liệu của 3 UAVO mới.
+- Để build được firmware trên Ubuntu 24.04 phải sửa hai chỗ không liên quan tới FollowMe:
+  - `make/scripts/version-info.py` (bản port sang Python 3 ở mục 3): `sha1()` dùng sentinel `''` khi đọc file nhị phân nên lặp vô hạn ở bước FWINFO; `get_hash_of_dirs()` mở file bằng mode `'rU'` (bị bỏ từ Python 3.11), lỗi bị nuốt nên hash UAVO được tính trên tập rỗng. Bản GCS build ngày 2026-10-27 vì vậy mang hash UAVO rỗng; build lại GCS để hash khớp với firmware.
+  - `flight/make/unittest.mk`: gtest 1.7.0 (`make gtest_install`) sinh warning mới với GCC 13 và hỏng vì `-Werror`; tắt `-Werror` riêng cho `gtest-all.o`.
+- Toolchain: `make arm_sdk_install` (GNU Arm 10.3-2021.10, cài vào `tools/`, không cần sudo) và `make gtest_install`.
+
+Chưa làm (cần phần cứng): Mốc A (bench test cổng UART với `vt_sim.py`), Mốc B (tháo cánh, kiểm tra chiều lệnh, không tự disarm, các tình huống mất track), tích hợp với companion thật và bay thử. Danh sách bước chi tiết nằm ở kế hoạch thực hiện (giai đoạn 3–7).
+
+### 11.7 Hạn chế
+
+- Không có giữ vị trí ngang (không GPS, chưa có optical flow), nên drone sẽ trôi theo gió và theo sai lệch trim. Bay trong không gian rộng, có dây giữ.
+- `LostAction = Descend` hạ cánh rồi vẫn armed, motor quay ở `ThrustLimits.Min`. Phi công phải gạt ra khỏi FollowMe rồi disarm.
+- Parser không quay lui: một frame bị cắt cụt làm mất thêm frame kế tiếp, frame sau đó mới nhận lại được.
+- Độ trễ camera + YOLO chưa được bù (chỉ bù phần yaw quay giữa hai frame tới). Giữ `Kp`/`Kd` thấp nếu thấy dao động yaw.
