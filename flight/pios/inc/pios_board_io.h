@@ -144,6 +144,16 @@ extern uint32_t pios_com_msp_id;
 # define PIOS_COM_MSP_RX_BUF_LEN     64
 #endif
 
+/* VisionTracker */
+extern uint32_t pios_com_visiontracker_id;
+#define PIOS_COM_VISIONTRACKER             (pios_com_visiontracker_id)
+#ifndef PIOS_COM_VISIONTRACKER_TX_BUF_LEN
+# define PIOS_COM_VISIONTRACKER_TX_BUF_LEN 32
+#endif
+#ifndef PIOS_COM_VISIONTRACKER_RX_BUF_LEN
+# define PIOS_COM_VISIONTRACKER_RX_BUF_LEN 128
+#endif
+
 /* MAVLink */
 extern uint32_t pios_com_mavlink_id;
 #define PIOS_COM_MAVLINK             (pios_com_mavlink_id)
@@ -230,6 +240,7 @@ typedef enum {
     PIOS_BOARD_IO_UART_HOTT_BRIDGE, /* com */
     PIOS_BOARD_IO_UART_FRSKY_SENSORHUB, /* com */
     PIOS_BOARD_IO_UART_FRSKY_SPORT, /* com */
+    PIOS_BOARD_IO_UART_VISIONTRACKER, /* com */
 } PIOS_BOARD_IO_UART_Function;
 
 

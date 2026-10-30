@@ -96,6 +96,7 @@ uint32_t pios_openlrs_id; /* OpenLRS handle */
 
 uint32_t pios_com_hkosd_id; /* HK OSD ?? */
 uint32_t pios_com_msp_id; /* MSP */
+uint32_t pios_com_visiontracker_id; /* VisionTracker */
 uint32_t pios_com_mavlink_id; /* MAVLink */
 uint32_t pios_com_frsky_sensorhub_id; /* Frsky Sensorhub */
 uint32_t pios_com_vcp_id; /* USB VCP */
@@ -329,6 +330,12 @@ static const struct uart_function uart_function_map[] = {
         .com_id         = &pios_com_msp_id,
         .com_rx_buf_len = PIOS_COM_MSP_RX_BUF_LEN,
         .com_tx_buf_len = PIOS_COM_MSP_TX_BUF_LEN,
+    },
+
+    [PIOS_BOARD_IO_UART_VISIONTRACKER] =     {
+        .com_id         = &pios_com_visiontracker_id,
+        .com_rx_buf_len = PIOS_COM_VISIONTRACKER_RX_BUF_LEN,
+        .com_tx_buf_len = PIOS_COM_VISIONTRACKER_TX_BUF_LEN,
     },
 #ifdef PIOS_INCLUDE_GPS
     [PIOS_BOARD_IO_UART_GPS] =               {

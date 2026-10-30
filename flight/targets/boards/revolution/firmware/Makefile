@@ -61,6 +61,7 @@ OPTMODULES += UAVOFrSKYSPortBridge
 OPTMODULES += UAVOMSPBridge
 OPTMODULES += UAVOMavlinkBridge
 OPTMODULES += UAVOFrSKYSensorHubBridge
+OPTMODULES += VisionTracker
 
 SRC += $(FLIGHTLIB)/notification.c
 
