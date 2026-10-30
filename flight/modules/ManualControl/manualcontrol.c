@@ -49,6 +49,9 @@
 #include <systemalarms.h>
 #ifndef PIOS_EXCLUDE_ADVANCED_FEATURES
 #include <vtolpathfollowersettings.h>
+#include <trackingdata.h>
+#include <followmesettings.h>
+#include <followmestatus.h>
 #endif /* ifndef PIOS_EXCLUDE_ADVANCED_FEATURES */
 
 // Private constants
@@ -104,6 +107,15 @@ static const controlHandler handler_PATHPLANNER = {
         .PathPlanner   = true,
     },
     .handler           = &pathPlannerHandler,
+};
+
+static const controlHandler handler_FOLLOWME = {
+    .controlChain      = {
+        .Stabilization = true,
+        .PathFollower  = false,
+        .PathPlanner   = false,
+    },
+    .handler           = &followMeHandler,
 };
 static float thrustAtBrakeStart = 0.0f;
 static float thrustLo = 0.0f;
@@ -171,6 +183,9 @@ int32_t ManualControlInitialize()
 #ifndef PIOS_EXCLUDE_ADVANCED_FEATURES
     SystemAlarmsInitialize();
     VtolSelfTuningStatsInitialize();
+    TrackingDataInitialize();
+    FollowMeSettingsInitialize();
+    FollowMeStatusInitialize();
     VtolPathFollowerSettingsConnectCallback(&SettingsUpdatedCb);
     SystemSettingsConnectCallback(&SettingsUpdatedCb);
 #endif /* ifndef PIOS_EXCLUDE_ADVANCED_FEATURES */
@@ -462,6 +477,9 @@ static void manualControlTask(void)
         break;
     case FLIGHTSTATUS_FLIGHTMODE_PATHPLANNER:
         handler = &handler_PATHPLANNER;
+        break;
+    case FLIGHTSTATUS_FLIGHTMODE_FOLLOWME:
+        handler = &handler_FOLLOWME;
         break;
 #endif /* ifndef PIOS_EXCLUDE_ADVANCED_FEATURES */
         // There is no default, so if a flightmode is forgotten the compiler can throw a warning!

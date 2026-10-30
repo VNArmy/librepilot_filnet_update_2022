@@ -175,6 +175,14 @@ int32_t configuration_check()
             ADDSEVERITY(multirotor);
             break;
 #endif /* !defined(PIOS_EXCLUDE_ADVANCED_FEATURES) */
+#if !defined(PIOS_EXCLUDE_ADVANCED_FEATURES) && defined(HAS_VISIONTRACKER_MODULE)
+        case FLIGHTMODESETTINGS_FLIGHTMODEPOSITION_FOLLOWME:
+            ADDSEVERITY(!gps_assisted);
+            ADDSEVERITY(!coptercontrol);
+            // only yaw and altitude are controlled, roll and pitch are held level
+            ADDSEVERITY(multirotor);
+            break;
+#endif /* !defined(PIOS_EXCLUDE_ADVANCED_FEATURES) && defined(HAS_VISIONTRACKER_MODULE) */
         default:
             // Uncovered modes are automatically an error
             ADDSEVERITY(false);

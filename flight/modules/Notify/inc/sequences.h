@@ -191,6 +191,7 @@ const LedSequence_t *flightModeMap[] = {
 #if !defined(PIOS_EXCLUDE_ADVANCED_FEATURES)
     [FLIGHTSTATUS_FLIGHTMODE_AUTOTUNE] = &notifications[NOTIFY_SEQUENCE_ARMED_FM_MANUAL],
 #endif /* !defined(PIOS_EXCLUDE_ADVANCED_FEATURES) */
+    [FLIGHTSTATUS_FLIGHTMODE_FOLLOWME]         = &notifications[NOTIFY_SEQUENCE_ARMED_FM_AUTO],
 };
 
 // List of alarms to show with attached sequences for each status

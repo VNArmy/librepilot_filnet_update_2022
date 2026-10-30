@@ -536,6 +536,9 @@ static void mavlink_send_extra2()
     case FLIGHTSTATUS_FLIGHTMODE_POI:
         custom_mode = CUSTOM_MODE_STAB; // Don't know any better
         break;
+    case FLIGHTSTATUS_FLIGHTMODE_FOLLOWME:
+        custom_mode = CUSTOM_MODE_GUIDED; // fully automatic, steered by the vision tracker
+        break;
     }
 
     mavlink_msg_heartbeat_pack(0, 200, mav_msg,

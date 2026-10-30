@@ -1885,6 +1885,7 @@ void update_telemetrydata()
     const char *txt_autocruise       = "AutoCruise";
     const char *txt_autotakeoff      = "AutoTakeOff";
     const char *txt_autotune         = "Autotune";
+    const char *txt_followme         = "FollowMe";
     const char *txt_disarmed         = "Disarmed";
     const char *txt_arming           = "Arming";
     const char *txt_armed = "Armed";
@@ -1947,6 +1948,9 @@ void update_telemetrydata()
         break;
     case FLIGHTSTATUS_FLIGHTMODE_AUTOTUNE:
         txt_flightmode = txt_autotune;
+        break;
+    case FLIGHTSTATUS_FLIGHTMODE_FOLLOWME:
+        txt_flightmode = txt_followme;
         break;
     default:
         txt_flightmode = txt_unknown;

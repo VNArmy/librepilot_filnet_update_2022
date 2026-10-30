@@ -252,9 +252,12 @@ void armHandler(bool newinit, FrameType_t frameType)
     case ARM_STATE_DISARMING_TIMEOUT:
     {
         // we should never reach the disarming timeout if the pathfollower is engaged - reset timeout
+        // the same applies to FollowMe, which ignores the throttle stick
         FlightStatusControlChainData cc;
         FlightStatusControlChainGet(&cc);
-        if (cc.PathFollower == FLIGHTSTATUS_CONTROLCHAIN_TRUE) {
+        FlightStatusFlightModeOptions flightMode;
+        FlightStatusFlightModeGet(&flightMode);
+        if (cc.PathFollower == FLIGHTSTATUS_CONTROLCHAIN_TRUE || flightMode == FLIGHTSTATUS_FLIGHTMODE_FOLLOWME) {
             armedDisarmStart = sysTime;
         }
     }

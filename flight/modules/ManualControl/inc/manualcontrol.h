@@ -77,6 +77,13 @@ void pathFollowerHandler(bool newinit);
 void pathPlannerHandler(bool newinit);
 
 /**
+ * @brief Handler to control the FollowMe flightmode. Keeps the object reported by the vision tracker centered in the camera image
+ * @input: NONE: fully automated mode, uses TrackingData
+ * @output: StabilizationDesired
+ */
+void followMeHandler(bool newinit);
+
+/**
  * @brief Handler to setup takeofflocation on arming. it is set up during Arming
  * @input: NONE:
  * @output: NONE
@@ -121,7 +128,8 @@ void takeOffLocationHandlerInit();
     ENTRY(RETURNTOBASE) \
     ENTRY(LAND) \
     ENTRY(PATHPLANNER) \
-    ENTRY(POI)
+    ENTRY(POI) \
+    ENTRY(FOLLOWME)
 
 #define EXPAND_FLIGHTMODE(x)           ((int)FLIGHTMODESETTINGS_FLIGHTMODEPOSITION_##x == (int)FLIGHTSTATUS_FLIGHTMODE_##x) &&
 /*
