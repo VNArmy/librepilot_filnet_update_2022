@@ -332,7 +332,7 @@ Không arm được khi switch đang ở FollowMe. Quy trình bay: arm và cất
   - `flight/make/unittest.mk`: gtest 1.7.0 (`make gtest_install`) sinh warning mới với GCC 13 và hỏng vì `-Werror`; tắt `-Werror` riêng cho `gtest-all.o`.
 - Toolchain: `make arm_sdk_install` (GNU Arm 10.3-2021.10, cài vào `tools/`, không cần sudo) và `make gtest_install`.
 
-Chưa làm (cần phần cứng): Mốc A (bench test cổng UART với `vt_sim.py`), Mốc B (tháo cánh, kiểm tra chiều lệnh, không tự disarm, các tình huống mất track), tích hợp với companion thật và bay thử. Danh sách bước chi tiết nằm ở kế hoạch thực hiện (giai đoạn 3–7).
+Chưa làm (cần phần cứng): Mốc A (bench test cổng UART với `vt_sim.py`), Mốc B (tháo cánh, kiểm tra chiều lệnh, không tự disarm, các tình huống mất track), tích hợp với companion thật và bay thử. Danh sách bước chi tiết nằm ở kế hoạch thực hiện (giai đoạn 3–7). Test case kèm bước thực hiện và giá trị mong đợi: `testcases-followme.md` (Mốc A là nhóm UART, Mốc B là nhóm FM).
 
 ### 11.7 Hạn chế
 
