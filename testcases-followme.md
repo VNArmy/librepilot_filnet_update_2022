@@ -1,6 +1,6 @@
 # Test case: flight mode FollowMe + VisionTracker
 
-Nhánh `feature/visiontracker-followme`, viết theo code ở commit `1a70e21a5`. Tài liệu liên quan: `progress.md` mục 11, `flight/modules/VisionTracker/PROTOCOL.md`.
+Nhánh `feature/visiontracker-followme`, viết theo code ở commit `1a70e21a5`, cộng thêm target `omnibusf4v3` (Omnibus F4 V3). Tài liệu liên quan: `progress.md` mục 11, `flight/modules/VisionTracker/PROTOCOL.md`.
 
 ## 0. Cách dùng
 
@@ -13,7 +13,7 @@ Nhánh `feature/visiontracker-followme`, viết theo code ở commit `1a70e21a5`
 |---|---|---|
 | UT | Unit test parser C, công cụ Python | PC (WSL) |
 | BLD | Build firmware, GCS | PC (WSL) |
-| CFG | Nâng cấp, cấu hình trên GCS, sanity check | Revolution + USB |
+| CFG | Nâng cấp, cấu hình trên GCS, sanity check | Revolution hoặc Omnibus F4 V3 + USB |
 | UART | Bench test cổng UART (Mốc A) | + USB-UART 3.3 V |
 | FM | Logic FollowMe trên bàn, không cánh (Mốc B) | + RC |
 | INT | Tích hợp với companion thật | + companion, camera |
@@ -24,9 +24,10 @@ Nhánh `feature/visiontracker-followme`, viết theo code ở commit `1a70e21a5`
 
 ### 1.1 Phần cứng
 
-- Revolution. Chỉ firmware Revolution có module VisionTracker.
+- Revolution (`fw_revolution`) hoặc Omnibus F4 V3 (`fw_omnibusf4v3`). Chỉ hai firmware này có module VisionTracker.
+- Omnibus F4 V3 dùng chung board ID 0x0903 và bootloader với Revolution, nên GCS hiện board là Revolution và dùng trang Hardware của Revolution. Ghi rõ board vào bảng kết quả (mục 10).
 - Adapter USB-UART mức logic 3.3 V (CP2102, FT232, CH340...). Không dùng adapter logic 5 V.
-- Bộ phát RC và receiver đã cấu hình xong trong GCS (Input wizard).
+- Bộ phát RC và receiver đã cấu hình xong trong GCS (Input wizard). Omnibus F4 V3: receiver S.Bus cắm chân S.Bus của board (W-SBUS), Main = S.Bus.
 - Các test có arm: ưu tiên **chỉ cấp nguồn USB, không cắm pin** để motor không quay. Nếu không arm được vì alarm pin thì cắm pin nhưng **tháo hết cánh**.
 
 ### 1.2 Phần mềm
@@ -39,15 +40,37 @@ Nhánh `feature/visiontracker-followme`, viết theo code ở commit `1a70e21a5`
 ### 1.3 Đấu dây
 
 - TX của adapter → RX của FC, RX của adapter → TX của FC, GND ↔ GND. Không nối VCC của adapter vào FC (FC đã có nguồn USB).
-- **W-FLEXI / W-MAIN**: cổng 4 chân GND, VCC, TX, RX. Đối chiếu sơ đồ chân Revolution trước khi cắm.
-- **W-RCVR**: UART của cổng Rcvr là USART6, TX = PC6, RX = PC7 (`board_hw_defs.c`). Tra sơ đồ chân FlexiIO để biết dây tương ứng. PPM vẫn ở chân PPM như cũ.
+- Chân UART của từng cổng (theo `board_hw_defs.c` của từng target). Main và Receiver đổi USART cho nhau giữa hai board; cột Omnibus theo patch đã test trên phần cứng:
+
+  | Dây | Cổng trên GCS | Revolution | Omnibus F4 V3 |
+  |---|---|---|---|
+  | **W-MAIN** | Main | USART1: TX = PA9, RX = PA10 | USART6: TX = PC6, RX = PC7 |
+  | **W-FLEXI** | Flexi | USART3: TX = PB10, RX = PB11 | USART3: TX = PB10, RX = PB11 |
+  | **W-RCVR** | Receiver (FlexiIO) | USART6: TX = PC6, RX = PC7 | USART1: TX = PA9, RX = PA10 |
+  | **W-PPM** | Receiver, chân PPM | PB14 | PB8 |
+  | **W-SBUS** | Main = S.Bus | RX của Main (PA10), mạch đảo điều khiển bằng PC0 | Chân S.Bus của board, qua mạch đảo có sẵn trên board vào RX của Main |
+
+- Revolution: Main và Flexi là cổng 4 chân GND, VCC, TX, RX. W-RCVR: tra sơ đồ chân FlexiIO để biết dây nào nối PC6, PC7. Đối chiếu sơ đồ chân Revolution trước khi cắm.
+- Omnibus F4 V3: tra sơ đồ chân của board để tìm pad nối với các chân MCU ở bảng trên. Mạch đảo S.Bus có sẵn trên board, firmware không điều khiển: để `HwSettings.SBusMode` = Normal.
+- Khoanh vùng lỗi UART: chiều FC → adapter (TX của FC) chạy khi vt_sim in dòng `FC:`, chiều adapter → FC (RX của FC) chạy khi `RxFrames` tăng. Ghi lại kết quả. Quy trình đầy đủ cho từng dây và mối hàn: UART-00.
 - Khi cần khởi động lại FC mà adapter vẫn cắm, dùng nút Reset ở trang Firmware của GCS thay vì rút USB: chân TX của adapter có thể cấp nguồn ngược vào FC qua chân RX.
+
+**Omnibus F4 V3: cấu hình Receiver không được dùng**
+
+| Receiver | Hậu quả | Nguyên nhân |
+|---|---|---|
+| `Outputs`, `PPM+Outputs` | Board treo ngay khi khởi động, GCS không kết nối được | Chân servo và chân Receiver dùng 7 timer, firmware chỉ có 6 bank: `PIOS_Assert` trong `PIOS_Servo_Init`. `PPM+Outputs` còn dùng PB8 vừa làm PPM vừa làm output |
+| `PWM`, `PPM+PWM` trong khi Main dùng UART (`S.Bus`, `VisionTracker`...) | Main không nhận và không gửi được (UART-13) | PWM input kênh 3–4 dùng PC6/PC7, trùng với USART6 của Main. PWM được khởi tạo sau Main nên chiếm chân |
+
+- Mặc định Receiver = `PWM`. Trên Omnibus, trước khi chọn Main = `S.Bus` hoặc `VisionTracker` phải đổi Receiver sang `VisionTracker`, `PPM`, `Disabled` hoặc một chức năng UART khác.
+- Nếu lỡ Save `Outputs` hoặc `PPM+Outputs`: nạp lại firmware không đủ vì setting vẫn nằm trong flash. Vào DFU (giữ nút BOOT khi cắm USB), dùng STM32CubeProgrammer xoá sector 2–3 (0x08008000–0x0800FFFF, vùng settings), rút USB rồi cắm lại. Board khởi động với setting mặc định. Import lại settings (CFG-01), sửa Receiver rồi Save trước khi reset.
 
 ### 1.4 Cấu hình nền (CFG-BASE)
 
 Dùng cho nhóm UART và FM nếu test không ghi khác:
 
 - Hardware: Flexi = `VisionTracker`, `HwSettings.VisionTrackerSpeed` = 115200. Save, reboot.
+- Omnibus F4 V3 dùng cấu hình sẽ bay: Main = `S.Bus` (`HwSettings.SBusMode` = Normal), Receiver = `VisionTracker`, Flexi = `Disabled`, `HwSettings.VisionTrackerSpeed` = 115200. Save, reboot. Ở mọi test ghi `Flexi = VisionTracker` hoặc W-FLEXI, Omnibus dùng `Receiver = VisionTracker` và W-RCVR, trừ khi test ghi khác.
 - Vehicle: multirotor (ví dụ Quad X).
 - Input → Flight Mode Switch Settings: 3 vị trí.
   - Pos1 = Stabilized1, Thrust = Manual (dùng để arm).
@@ -61,7 +84,12 @@ Sửa setting bằng UAVObject Browser: đổi giá trị → Send (gửi xuốn
 ### 1.5 Theo dõi trên GCS
 
 - UAVObject Browser: `TrackingData`, `FollowMeStatus`, `StabilizationDesired`, `RateDesired`, `ActuatorDesired`, `FlightStatus`, `AttitudeState`, `ManualControlCommand`, `TaskInfo`, `SystemAlarms`, `SystemStats`.
-- Scope gadget để vẽ đồ thị theo thời gian.
+- Scope gadget để vẽ đồ thị theo thời gian. Danh sách thả xuống trên tab Scope là danh sách *cấu hình* có sẵn (Default, Accel...), không phải danh sách UAVObject, nên không có `TrackingData` ở đó. Muốn vẽ object mới thì tạo cấu hình riêng:
+  1. Tools → Options → Scope. Chọn một cấu hình, bấm **Clone**, đặt tên (ví dụ `FollowMe`).
+  2. X-Axis: Plot Type = Chronological Plot, Data Size = 30 seconds.
+  3. Y-axis: UAVObject = `TrackingData`, UAVField = `X`, bấm **Add / Update**. Đổi UAVField = `Y`, chọn màu khác, bấm **Add / Update**. Xóa các curve cũ nhân bản theo (chọn curve → **Remove**). Bấm OK.
+  4. Về tab Scope, bật Window → Edit Gadgets Mode (Ctrl+Shift+F10) để hiện thanh công cụ của gadget, chọn cấu hình `FollowMe`, rồi tắt Edit Gadgets Mode.
+  - Danh sách UAVObject trong Options không sắp theo nhóm. `TrackingData` nằm gần cuối, sau `SystemStats`. Nếu cả UAVObject Browser cũng không có `TrackingData` thì GCS đang chạy là bản cũ, build trước khi thêm `trackingdata.xml`: chạy bản build từ nhánh này.
 - `TrackingData` và `FollowMeStatus` được gửi về GCS tối đa 4 Hz (throttled 250 ms). Ở 20 Hz, mỗi lần GCS cập nhật `RxFrames` tăng khoảng 5: bình thường.
 - `FollowMeStatus` chỉ được cập nhật khi đang ở FollowMe. Ngoài FollowMe nó giữ giá trị cũ, và `followme_state` trong FC_STATUS cũng vậy.
 - Handler FollowMe chạy cả khi **chưa arm**, nên phần lớn nhóm FM đọc lệnh trên GCS mà không cần motor quay.
@@ -166,6 +194,8 @@ Mong đợi:
 - Bước 3 in đủ 3 symbol.
 - Bước 4: `text` khoảng 280 744 byte (`progress.md` 11.6). Ghi lại số đo.
 
+Omnibus F4 V3: làm lại bước 1–4 với `fw_omnibusf4v3` thay cho `fw_revolution`. Mong đợi như trên, `text` khoảng 250 712 byte (không có RFM22B, OpenLRS, mag, baro).
+
 ### BLD-02 Các board khác · P2
 
 Bước:
@@ -193,7 +223,7 @@ Mong đợi:
 
 Bước:
 1. Dùng GCS cũ với firmware cũ: File → Export UAV Settings → lưu `before.uav`.
-2. Dùng GCS mới: trang Firmware → flash `fw_revolution` mới (Rescue nếu cần).
+2. Dùng GCS mới: trang Firmware → flash `fw_revolution` mới (Rescue nếu cần). Omnibus F4 V3: bấm Open, chọn `fw_omnibusf4v3.opfw` rồi flash. Không dùng chức năng tự nâng cấp firmware của trang Firmware hay Setup Wizard, vì GCS coi board là Revolution và sẽ nạp `fw_revolution`.
 3. File → Import UAV Settings → chọn `before.uav` → lưu vào board.
 4. Reset board, kết nối lại.
 
@@ -243,7 +273,7 @@ Bước:
 
 Mong đợi:
 - Bước 1: Running = False, RxFrames = 0 và không đổi.
-- Bước 2: Running = True. Ghi lại StackRemaining (báo lỗi nếu < 100 byte). CPULoad chênh không quá 2% so với bước 1.
+- Bước 2: Running = True. Ghi lại StackRemaining (báo lỗi nếu < 100 byte; stack 768 byte thì thường còn khoảng 250). `SystemAlarms.Alarm.StackOverflow` = OK, kiểm tra lại sau 1 phút. Alarm này giữ nguyên tới khi reset. CPULoad chênh không quá 2% so với bước 1.
 
 ### CFG-06 Gán FollowMe cho switch · P1
 
@@ -306,7 +336,76 @@ Mong đợi: bước 1 khớp mặc định. Sau bước 2 giá trị mới đư
 
 ## 5. UART: bench test cổng UART (Mốc A)
 
-Điều kiện chung: CFG-BASE, W-FLEXI, FC nối GCS qua USB, không arm, switch ở Pos1.
+Điều kiện chung: CFG-BASE, W-FLEXI, FC nối GCS qua USB, không arm, switch ở Pos1. UART-00 có điều kiện riêng.
+
+### UART-00 Cổng VisionTracker và mối hàn · P1
+
+Chạy trước các test UART khác: lần đầu dùng board, sau mỗi lần hàn lại, và cho từng cổng sẽ dùng làm VisionTracker. Tra chân TX, RX của cổng ở bảng mục 1.3 (CFG-BASE: Revolution Flexi TX = PB10, RX = PB11; Omnibus F4 V3 Receiver TX = PA9, RX = PA10).
+
+Điều kiện: đồng hồ vạn năng, adapter 3.3 V, cổng đã đặt VisionTracker theo CFG-BASE (Save, reset), `VisionTrackerSpeed` = 115200. Đầu dây tự do chưa cắm vào adapter.
+
+Bước:
+
+**A. Adapter (chưa nối FC)**
+
+1. Nối tắt TX với RX của adapter, chạy đoạn sau rồi bỏ nối tắt:
+   ```python
+   import serial
+   s = serial.Serial("COM5", 115200, timeout=0.2); d = bytes(range(256))
+   s.write(d); print(s.read(256) == d)
+   ```
+
+**B. Không cấp điện (rút USB, không cắm pin)**
+
+2. Nhìn kỹ các mối hàn: thiếc bám đều, không dính pad bên cạnh, không lộ lõi đồng.
+3. Thang thông mạch, từ đầu dây tự do đến pad trên board: TX, RX, GND. Lắc nhẹ dây trong lúc đo.
+4. Đo chập: giữa TX, RX, GND, 5V với nhau, và giữa TX, RX với các pad liền kề.
+5. Tùy chọn, nếu đặt được que đo vào chân MCU (STM32F405RGT, LQFP64; đối chiếu datasheet trước khi đo): từ pad đến chân MCU: PA9 = 42, PA10 = 43, PC6 = 37, PC7 = 38, PB10 = 29, PB11 = 30.
+
+**C. Có điện, chưa nối adapter (chỉ cắm USB)**
+
+6. Đọc `TaskInfo.Running.VisionTracker`.
+7. Đo DC so với GND tại đầu dây tự do của TX và RX.
+
+**D. Thử từng dây (FC đang có điện, nối GND trước)**
+
+8. Chỉ dây TX: TX của FC → RX của adapter, GND ↔ GND, TX của adapter để hở. Chạy đoạn đo FC_STATUS ở UART-03 bước 4, lặp lại một lần và lắc nhẹ dây TX, GND trong lúc đo.
+9. Chỉ dây RX: rút dây bước 8, TX của adapter → RX của FC, giữ GND. Ghi `RxFrames`, `RxErrors`. Chạy `python vt_sim.py COM5 --static 0 0` trong 10 s, lắc nhẹ dây RX trong lúc chạy. Ghi lại rồi Ctrl+C.
+
+**E. Đủ dây**
+
+10. Nối cả TX và RX, chạy `python vt_sim.py COM5 --static 0.3 -0.2` trong 60 s.
+
+Mong đợi:
+- Bước 1: in `True`.
+- Bước 2–3: mối hàn đạt, cả ba đường kêu liên tục kể cả khi lắc dây.
+- Bước 4: không cặp nào kêu.
+- Bước 5: điện trở dưới 1 kΩ, đúng chân theo bảng mục 1.3.
+- Bước 6: True.
+- Bước 7: TX và RX đều 3.0–3.4 V (TX nghỉ ở mức cao, RX có pull-up trong MCU). Không đường nào trên 3.6 V.
+- Bước 8: `FC_STATUS/s` = 5.0 ± 0.2, `crc_errors` = 0. Có oscilloscope hoặc logic analyzer thì thấy một cụm khoảng 1.2 ms mỗi 200 ms (14 byte, 8.68 µs mỗi bit), bắt đầu bằng `A5 5A 81 09`.
+- Bước 9: `RxFrames` tăng 200 ± 5, `RxErrors` không tăng, `Valid` = True. vt_sim không in dòng `FC:`, đúng vì chưa nối dây TX.
+- Bước 10: mỗi giây một dòng `FC:`, `RxFrames` tăng 1200 ± 30, `RxErrors` không tăng, `X` ≈ 0.3, `Y` ≈ −0.2.
+
+Khi fail:
+
+| Hiện tượng | Nguyên nhân thường gặp | Xử lý |
+|---|---|---|
+| Bước 1 in `False` | Sai số COM, adapter hỏng | Sửa cái này trước, các bước sau mới có ý nghĩa |
+| Bước 3 không kêu, hoặc chập chờn khi lắc | Mối hàn hở hoặc hàn nguội, đứt dây | Hàn lại |
+| Bước 4 có cặp kêu | Dính thiếc | Sửa trước khi cấp điện |
+| Bước 6 False | Chưa Save và reset, sai cổng | Xem CFG-05 |
+| Bước 7 trên 3.6 V | Chập với 5V | Rút nguồn ngay, làm lại bước 4 |
+| Bước 7 gần 0 V | Chập GND, dây hở, hàn sai pad. Riêng RX: có thiết bị khác đang kéo đường này | Làm lại bước 3–5, rút thiết bị khác khỏi cổng |
+| Bước 8 không có frame, `crc_errors` = 0 | Dây TX hở, sai pad, hoặc TX và RX bị đảo | Nối RX của adapter sang dây đang gọi là RX. Nếu có frame thì hai dây bị đảo |
+| Bước 9 `RxFrames` đứng, `RxErrors` tăng | Sai baud, nhiễu, thiếu GND | Kiểm tra `VisionTrackerSpeed`, dây GND |
+| Bước 9 `RxFrames` đứng, `RxErrors` đứng | Dây RX hở, sai pad, TX và RX bị đảo (sai baud cũng có thể cho kết quả này) | Làm như dòng bước 8, với TX của adapter |
+| Lắc dây thì mất frame, `crc_errors` hoặc `RxErrors` tăng | Mối hàn chập chờn | Hàn lại |
+
+Ghi chú:
+- Không dùng jumper nối TX với RX trên FC để thử. FC_STATUS quay về có CRC đúng nhưng bị bỏ qua vì không phải TRACK, nên `RxFrames` và `RxErrors` không đổi và GCS không thấy gì.
+- Omnibus F4 V3 khi thử cổng Main: rút receiver S.Bus (UART-07), không đấu adapter vào chân S.Bus vì tín hiệu đi qua mạch đảo. RX của Main (PC7) nối với đầu ra mạch đảo nên bước 7 có thể khác: ghi lại.
+- Kết quả không khớp bảng mục 1.3 thì ghi lại và kiểm tra mối hàn trước. Bảng Omnibus đã test trên phần cứng nên không sửa theo kết quả một lần đo.
 
 ### UART-01 Nhận frame TRACK · P1
 
@@ -323,7 +422,7 @@ Mong đợi:
 
 Bước:
 1. `python vt_sim.py COM5` (hình sin: biên độ X 0.5, Y 0.3, chu kỳ 8 s).
-2. Scope: vẽ `TrackingData.X` và `TrackingData.Y` trong 30 s.
+2. Scope: vẽ `TrackingData.X` và `TrackingData.Y` trong 30 s (cách tạo cấu hình Scope: mục 1.5).
 3. `python vt_sim.py COM5 --amp-x 1.5`
 
 Mong đợi:
@@ -384,27 +483,38 @@ Mong đợi: như UART-01. Cuối test trả về 115200.
 
 ### UART-07 Cổng Main · P1
 
+Omnibus F4 V3: Main không còn là S.Bus nên test này không có RC. Rút receiver S.Bus ra, vì nó cũng đi vào RX của Main. Không đổi Receiver sang `PWM` hay `PPM+PWM` (mục 1.3).
+
 Bước:
-1. Hardware: Main = VisionTracker (Flexi tự về Disabled). Save, reset.
+1. Hardware: Main = VisionTracker (Flexi tự về Disabled; Omnibus F4 V3: Receiver tự về Disabled). Save, reset.
 2. Đấu W-MAIN, làm lại UART-01 và UART-03 (bước 1–2).
+3. Omnibus F4 V3: trả về CFG-BASE, cắm lại receiver S.Bus.
 
 Mong đợi: như UART-01 và UART-03.
 
-### UART-08 Cổng Receiver = VisionTracker · P2
+### UART-08 Cổng VisionTracker thứ hai · P2
 
-Điều kiện: receiver RC chuyển sang cổng khác (S.Bus/DSM), hoặc test không dùng RC.
+Revolution kiểm tra Receiver = VisionTracker. Omnibus F4 V3 đã dùng Receiver trong CFG-BASE, nên kiểm tra Flexi = VisionTracker làm cổng dự phòng.
+
+Điều kiện: Revolution: receiver RC dùng Main hoặc Flexi, hoặc test không dùng RC. Omnibus F4 V3: S.Bus giữ trên Main, bộ phát RC bật.
 
 Bước:
-1. Hardware: Receiver = VisionTracker. Save, reset.
-2. Đấu W-RCVR, làm lại UART-01 và UART-03 (bước 1–2).
+1. Revolution: Hardware: Receiver = VisionTracker. Save, reset. Đấu W-RCVR (PC6/PC7).
+   Omnibus F4 V3: Hardware: Flexi = VisionTracker (Receiver tự về Disabled), Main giữ S.Bus. Save, reset. Đấu W-FLEXI (PB10/PB11).
+2. Làm lại UART-01 và UART-03 (bước 1–2). Omnibus F4 V3: trong lúc chạy vt_sim, gạt từng stick hết hành trình.
+3. Omnibus F4 V3: trả về CFG-BASE.
 
-Mong đợi: như UART-01 và UART-03.
+Mong đợi:
+- Như UART-01 và UART-03.
+- Omnibus F4 V3: `ManualControlCommand` chạy theo stick, alarm Receiver = OK.
 
 ### UART-09 Cổng Receiver = PPM+VisionTracker · P1 nếu dùng cấu hình này
 
+Omnibus F4 V3 dùng RC S.Bus: bỏ qua.
+
 Bước:
 1. Hardware: Receiver = PPM+VisionTracker. Save, reset.
-2. Receiver PPM cắm chân PPM, adapter cắm chân USART6 (W-RCVR).
+2. Receiver PPM cắm W-PPM (Revolution: PB14; Omnibus F4 V3: PB8), adapter cắm W-RCVR.
 3. Chạy `python vt_sim.py COM5 --static 0 0`, đồng thời gạt từng stick hết hành trình.
 
 Mong đợi:
@@ -431,6 +541,36 @@ Mong đợi:
 - `RxFrames/s` ≈ R (±5%), `RxErrors` = 0.
 - CPULoad tăng không quá 3% so với CFG-05 bước 2. StackRemaining không giảm so với CFG-05. Không có alarm.
 - P3: thử `--rate 300` (khoảng 6.3 KB/s ở 115200 baud). FC không treo, không reset. Ghi lại `RxErrors`.
+
+### UART-12 Omnibus F4 V3: S.Bus trên Main cùng VisionTracker trên Receiver · P1
+
+Điều kiện: Omnibus F4 V3, CFG-BASE, receiver S.Bus đã bind và cắm W-SBUS, adapter cắm W-RCVR (PA9/PA10), bộ phát RC bật.
+
+Bước:
+1. Gạt từng stick hết hành trình, gạt switch Pos1 → Pos2 → Pos3.
+2. Chạy `python vt_sim.py COM5 --static 0 0` trong 60 s, trong lúc đó tiếp tục gạt stick.
+3. vt_sim vẫn chạy: tắt bộ phát RC 5 s rồi bật lại.
+
+Mong đợi:
+- Bước 1: `ManualControlCommand` Roll/Pitch/Yaw/Throttle chạy theo stick, `FlightStatus.FlightMode` đổi theo switch, alarm Receiver = OK.
+- Bước 2: `TrackingData` như UART-01 (`RxFrames` tăng khoảng 20/s, `RxErrors` = 0). Stick vẫn chạy như bước 1.
+- Bước 3: alarm Receiver bật khi tắt bộ phát và hết sau khi bật lại. `RxFrames` vẫn tăng đều. Nếu alarm không bật, ghi lại kiểu failsafe đang đặt trên receiver (giữ vị trí hay tắt xung).
+- Nếu bước 1 không nhận được S.Bus: kiểm tra `HwSettings.SBusMode` = Normal, receiver đang xuất S.Bus, Receiver không ở `PWM` hay `PPM+PWM` (mục 1.3).
+
+### UART-13 Omnibus F4 V3: Receiver = PWM khi Main dùng UART · P2
+
+Điều kiện: Omnibus F4 V3, CFG-BASE, receiver S.Bus cắm W-SBUS, không có gì cắm vào chân PWM của Receiver, bộ phát RC bật.
+
+Bước:
+1. Gạt từng stick, ghi trạng thái alarm Receiver (mốc so sánh).
+2. Receiver = PWM. Save, reset. Gạt stick.
+3. Receiver = PPM+PWM. Save, reset. Gạt stick.
+4. Trả về CFG-BASE. Save, reset. Gạt stick.
+
+Mong đợi:
+- Bước 1 và 4: `ManualControlCommand` chạy theo stick, alarm Receiver = OK.
+- Bước 2–3: không nhận được S.Bus (stick không có tác dụng, alarm Receiver bật), vì PWM chiếm PC6/PC7 của Main (mục 1.3). FC không treo, không reset, vẫn kết nối GCS qua USB.
+- Nếu bước 2–3 vẫn nhận được S.Bus thì ghi lại, vì kết quả khác với phân tích ở mục 1.3.
 
 ---
 
@@ -542,7 +682,7 @@ Mong đợi:
 ### FM-10 Thành phần D của yaw · P2
 
 Bước:
-1. `YawPID.Kd` = 0 (Send). Chạy `vt_sim` (hình sin mặc định), Scope vẽ `YawError` và `YawRateCmd` trong 30 s.
+1. `YawPID.Kd` = 0 (Send). Chạy `vt_sim` (hình sin mặc định), Scope vẽ `YawError` và `YawRateCmd` trong 30 s (object `FollowMeStatus`, cách tạo cấu hình Scope: mục 1.5).
 2. `YawPID.Kd` = 0.5 (Send), quan sát lại.
 3. Trả `Kd` về 0.05.
 
@@ -915,7 +1055,7 @@ Mong đợi:
 |---|---|---|---|
 | REG-01 | P1 | Trong WSL: `make all_ut_run` | Mọi unit test pass |
 | REG-02 | P1 | Arm và bay các chế độ đang dùng (Stabilized1–3, AltitudeVario, AltitudeHold; PositionHold/RTB nếu có GPS) | Hoạt động như trước. PFD hiện đúng tên chế độ |
-| REG-03 | P1 | Sau CFG-01, kiểm tra các chức năng cổng khác: Telemetry, GPS, S.Bus, DSM, PPM, PWM | Hoạt động như trước |
+| REG-03 | P1 | Sau CFG-01, kiểm tra các chức năng cổng khác: Telemetry, GPS, S.Bus, DSM, PPM, PWM. Omnibus F4 V3: PPM ở PB8, PWM input ở PB8, PB9, PC6–PC9; bỏ qua `Outputs` và `PPM+Outputs` (mục 1.3) | Hoạt động như trước |
 | REG-04 | P2 | RevoNano, Sparky2 chạy firmware của nhánh | Khởi động, kết nối GCS, không có alarm mới |
 | REG-05 | P1 | Arm ở Stabilized, ga min | Tự disarm sau ArmedTimeout như cũ (FM-22 bước 3) |
 | REG-06 | P2 | So `SystemStats.CPULoad`, `HeapRemaining` trước và sau nâng cấp (có cổng VisionTracker) | CPU tăng dưới 3%. Ghi lại heap |
@@ -945,6 +1085,7 @@ Firmware (commit): ________  GCS (commit): ________  Board: ________  Người t
 | CFG-08 | P2 | | | |
 | CFG-09 | P2 | | | |
 | CFG-10 | P2 | | | |
+| UART-00 | P1 | | | ghi cổng đã thử |
 | UART-01 | P1 | | | |
 | UART-02 | P1 | | | |
 | UART-03 | P1 | | | |
@@ -952,10 +1093,12 @@ Firmware (commit): ________  GCS (commit): ________  Board: ________  Người t
 | UART-05 | P1 | | | |
 | UART-06 | P2 | | | |
 | UART-07 | P1 | | | |
-| UART-08 | P2 | | | |
+| UART-08 | P1* | | | *P1 trên Omnibus F4 V3, P2 trên Revolution |
 | UART-09 | P1* | | | *nếu dùng PPM+VisionTracker |
 | UART-10 | P1 | | | |
 | UART-11 | P2 | | | |
+| UART-12 | P1 | | | chỉ Omnibus F4 V3 |
+| UART-13 | P2 | | | chỉ Omnibus F4 V3 |
 | FM-01 | P1 | | | |
 | FM-02 | P1 | | | |
 | FM-03 | P1 | | | |
