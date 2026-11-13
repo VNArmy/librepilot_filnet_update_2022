@@ -1,4 +1,4 @@
-# LibrePilot GCS trên Ubuntu 24.04 / WSL2: nhật ký build và sửa lỗi
+# LibrePilot GCS trên Ubuntu 24.04 / WSL2 / Windows 10: nhật ký build và sửa lỗi
 
 Nhánh: `ubuntu24-qt515-osgearth`, tách từ `master` @ `35e84b70` ("update OSG and OSGEarth", 2022-08-18).
 
@@ -17,6 +17,8 @@ Còn mở:
 - Danh sách hạn chế khác ở mục 9.
 
 Nhánh `feature/visiontracker-followme` thêm flight mode FollowMe nhận dữ liệu tracking qua UART (mục 11). Đã build và unit test, chưa thử trên phần cứng.
+
+Nhánh `windows-msys2-ucrt64` build GCS native trên Windows 10 với MSYS2 UCRT64 (mục 12). Build và chạy được, chưa thử với board.
 
 ## 1. Nguồn mã
 
@@ -250,7 +252,7 @@ Rút kinh nghiệm từ quá trình này: thêm log chẩn đoán trước khi �
 - Trang Options của TelemetryMonitorGadget không mở được.
 - Lỗi `TypeError` của QML khi thoát chương trình: vô hại.
 - USB trên WSL2 (mục 7).
-- Chưa có bản Windows. Hướng dẫn build Windows (MSYS2/MinGW) nằm ngoài nhánh này.
+- Bản Windows: nhánh `windows-msys2-ucrt64`, xem mục 12.
 
 ## 10. Việc nên làm tiếp
 
@@ -340,3 +342,90 @@ Chưa làm (cần phần cứng): Mốc A (bench test cổng UART với `vt_sim.
 - `LostAction = Descend` hạ cánh rồi vẫn armed, motor quay ở `ThrustLimits.Min`. Phi công phải gạt ra khỏi FollowMe rồi disarm.
 - Parser không quay lui: một frame bị cắt cụt làm mất thêm frame kế tiếp, frame sau đó mới nhận lại được.
 - Độ trễ camera + YOLO chưa được bù (chỉ bù phần yaw quay giữa hai frame tới). Giữ `Kp`/`Kd` thấp nếu thấy dao động yaw.
+
+## 12. Build GCS native trên Windows 10 (MSYS2 UCRT64)
+
+Nhánh `windows-msys2-ucrt64`, tách từ `feature/visiontracker-followme` @ `9abea011`, làm trong git worktree `D:\librepilot-win` ngày 2026-11-13.
+
+### 12.1 Trạng thái
+
+GCS build và chạy được trên Windows 10 với MSYS2 UCRT64: GCC 16.2, Qt 5.15.19, OSG 3.6.5, osgEarth 3.8.1, Python 3.14. GStreamer chưa bật (`GCS_WITH_GSTREAMER=0`).
+
+Đã chạy thử hai lần với PATH không còn thư mục MSYS2 nào, nên mọi DLL phải lấy từ `bin/`: GCS khởi động trong khoảng 3,4 s, PFD nạp `Pfd.qml`, đóng cửa sổ thì thoát với exit code 0. Log (`-log`) không có lỗi nạp plugin OSG/osgEarth, thiếu module QML hay `context is not current`, không còn lỗi nạp model 3D và ảnh nền; chỉ còn các `TypeError` lúc thoát như trên Linux (mục 9).
+
+Chưa kiểm tra: Model View / Earth View render đúng (phải nhìn bằng mắt), nối board qua USB HID, nạp firmware, installer.
+
+### 12.2 Môi trường
+
+- MSYS2 cài ở `D:\msys64` (installer 2026-09-27). Gói cho UCRT64:
+
+```bash
+pacman -S --needed git unzip \
+  mingw-w64-ucrt-x86_64-{gcc,make,pkgconf,ntldd,python} \
+  mingw-w64-ucrt-x86_64-qt5-{base,declarative,svg,serialport,multimedia,script,xmlpatterns,quickcontrols,imageformats,translations,tools} \
+  mingw-w64-ucrt-x86_64-{SDL,openssl,OpenSceneGraph,osgearth}
+```
+
+  Tổng cộng 390 gói, `/ucrt64` khoảng 5,3 GB. Gói `SDL` 1.2 bị thay bằng `sdl12-compat` vì xung đột.
+- Chỉ build trong terminal "MSYS2 UCRT64". Gọi g++ của MSYS2 từ Git Bash hay PowerShell thì nó thoát mã 1 mà không báo lỗi (PATH lẫn với `/mingw64` của Git for Windows).
+- Không dùng MINGW64: MSYS2 bỏ dần môi trường này từ 2026-03 và không còn gói osgEarth cho nó.
+- Không đưa Qt khác lên trước PATH trong `~/.bashrc`. Bản cài cũ có `/e/Qt/5.15.2/mingw81_64/bin`, che mất `qmake` và `Qt5*.dll` của MSYS2.
+- Bản cài MSYS2 cũ ở `E:\msys64` chỉ cài được một nửa (205 gói UCRT64 thiếu file vì ổ E: hết chỗ lúc cài) nên đã xoá và cài lại trên D:. Danh sách gói, home và mục registry cũ được sao lưu ở `D:\msys64-migration\backup`.
+
+### 12.3 Build và chạy
+
+```bash
+# terminal MSYS2 UCRT64
+cd /d/librepilot-win
+mingw32-make GCS_WITH_GSTREAMER=0 gcs_qmake
+mingw32-make GCS_WITH_GSTREAMER=0 -j3 gcs
+# kết quả: build/librepilot-gcs_release/{bin,lib,share}, khoảng 656 MB
+```
+
+- Makefile tự lấy môi trường MSYS2 đang mở (`MSYSTEM_PREFIX`) và `qmake-qt5`, không cần truyền `QMAKE=`.
+- Dùng thư mục build riêng. `build/` của checkout trên E: là bản build Linux (WSL chạy trên `/mnt/e`); `make gcs` thấy Makefile đã có nên không chạy lại qmake mà dùng nhầm Makefile Linux.
+- `-j3`: mỗi `cc1plus` của lib osgearth dùng khoảng 700 MB; máy 16 GB RAM, pagefile nhỏ trên C: đã đầy. Compile toàn bộ mất khoảng 20 phút (i7-1165G7).
+- Chạy `bin/librepilot-gcs.exe`, không cần MSYS2 trong PATH. Ghi log: `librepilot-gcs.exe -log gcs.log`.
+
+### 12.4 Thay đổi mã nguồn
+
+| File | Vấn đề | Sửa |
+|---|---|---|
+| `make/tools.mk` | `MINGW_DIR` cứng `/mingw64`; Qt5 của MSYS2 tên `qmake-qt5` | `MINGW_DIR` theo `MSYSTEM_PREFIX`; dùng `qmake-qt5` nếu có |
+| `make/copy_dependencies.py` | Chỉ chạy được với Python 2; chỉ nhận DLL trong `mingw32`/`mingw64` | Port Python 3; nhận `ucrt64`, `clang64`...; `--excludes` không phân biệt hoa thường, có wildcard |
+| `make/scripts/version-info.py` | `utcfromtimestamp()` bị deprecated, cảnh báo mỗi lần gọi make | `fromtimestamp(..., timezone.utc)`, chuỗi kết quả không đổi |
+| `ground/gcs/src/python.pri` | Tìm `python2` | Dùng `PYTHON` do `tools.mk` export, sau đó `python3` |
+| `ground/gcs/gcs.pri` | Loại trừ `libLLVM-14.dll`, Mesa giờ kéo `libLLVM-22.dll` | `opengl32.dll libgallium_wgl.dll "libLLVM-*.dll"` |
+| `ground/gcs/copydata.pro` | Tên DLL OpenSSL 1.1; thiếu thư mục QML `QtQml` mà QtQuick 2.15 cần | `libcrypto-3-x64.dll`, `libssl-3-x64.dll`; thêm `QtQml` |
+| `osgearth_dependencies.pri` | C++11; link `osgEarthUtil`, không còn trong osgEarth 3 | osgEarth 3 (Windows, hoặc Linux không có `include/osgEarthUtil`): `CONFIG += c++17`, không link `osgEarthUtil` |
+| `OSGCamera.cpp`, `OSGEarthManipulator.cpp`, `OSGSkyNode.cpp` | API osgEarth 2.8 (mục 3) | `#if OSGEARTH_MAJOR_VERSION >= 3` chọn header/API, nhánh 2.8 giữ nguyên |
+| `utils/utility.cpp` (`capabilitiesInfo`) | 15 hàm của `osgEarth::Capabilities` không còn trong 3.x | Chỉ gọi với osgEarth < 3 |
+| `utils/utility.{h,cpp}`, `OSGFileNode.cpp`, `utils/imagesource.cpp` | `url.path()` làm mất ổ đĩa: QML gán chuỗi `D:\...` vào thuộc tính `url`, `D:` thành scheme, nên model 3D và ảnh nền báo "file not found" | Hàm `urlToLocalFile()` |
+| `coreplugin/authorsdialog.py` | Đọc `CREDITS.txt` (UTF-8) bằng bảng mã mặc định cp1252, `UnicodeDecodeError` | `encoding="utf-8"` |
+| `libs/eigen/Eigen/src/Core/Transpositions.h` | Eigen 3.3.3 gọi `trt.derived()` không tồn tại; GCC 15+ báo lỗi (`-Wtemplate-body`) | Truyền `trt` như các bản Eigen sau; ghi trong `README.LibrePilot.txt` |
+| `share/translations/translations.pro` | `lrelease` của MSYS2 tên `lrelease-qt5.exe` | Dùng tên có `-qt5` nếu tồn tại |
+| `sdlgamepad/copydata.pro` | `sdl12-compat`: `SDL.dll` nạp `SDL2.dll` rồi `SDL3.dll` lúc chạy, `ntldd` không thấy | Copy thêm `SDL2.dll`, `SDL3.dll` nếu có |
+| `gstreamer/copydata.pro` | `videoconvert` và `videoscale` gộp thành `videoconvertscale` từ GStreamer 1.22 | Đổi tên; chưa build thử vì GStreamer đang tắt |
+| `app/main.cpp` | Nối `OSG_LIBRARY_PATH` bằng `:` | `QDir::listSeparator()` (`;` trên Windows) |
+
+Nhánh osgEarth 2.8 của các file trên đã được kiểm tra cú pháp (`g++ -fsyntax-only`) với headers osgEarth 2.8 trong `tools/`; chưa build lại bản Linux đầy đủ từ nhánh này.
+
+### 12.5 Lịch sử lỗi khi build
+
+| # | Triệu chứng | Nguyên nhân | Sửa |
+|---|---|---|---|
+| 1 | `gcc.exe`, `osgversion.exe` của UCRT64 báo thiếu DLL; không có qmake | 205 gói UCRT64 trên `E:\msys64` chỉ cài một nửa | Cài lại MSYS2 trên D: |
+| 2 | Lỗi trong header osgEarth (`ReadWriteMutex`, `ScopedReadLock`) | Headers osgEarth 3.8 cần C++17 | `CONFIG += c++17` |
+| 3 | `UnicodeDecodeError` ở `authorsdialog.py` | Bảng mã mặc định cp1252 | `encoding="utf-8"` |
+| 4 | `Transpositions.h:387: no member named 'derived'` | GCC 16 kiểm tra cả thân template chưa dùng | Sửa Eigen |
+| 5 | `CreateProcess(... lrelease ...) failed` | Tên `lrelease-qt5.exe` | `translations.pro` |
+| 6 | `Error reading file \librepilot-win\...\test_quad_x.3ds: file not found` | `url.path()` bỏ ký tự ổ đĩa | `urlToLocalFile()` |
+
+### 12.6 Còn mở
+
+- Kiểm tra bằng mắt Model View / Earth View; nối board qua USB (HID) và nạp firmware từ bản Windows.
+- GStreamer (video gadget): cài `mingw-w64-ucrt-x86_64-gst-*` rồi build với `GCS_WITH_GSTREAMER=1`.
+- Installer NSIS (`mingw32-make package`): cần `nsis_install`, `mesawin_install` và firmware (`WITH_PREBUILT_FW=` trỏ tới firmware build trong WSL); `gcs.nsi` cần `/nonfatal` cho thư mục `gstreamer-1.0` khi GStreamer tắt.
+- Repo không có git tag nên nhãn phiên bản sai ("ul" trong tiêu đề cửa sổ, `PACKAGE_LBL=None`) trên mọi nền tảng: lấy tag từ upstream hoặc tạo tag.
+- Phần Windows trong `CONTRIBUTING.md` đã lỗi thời (i686, repo pacman của LibrePilot).
+- Build lại bản Linux từ nhánh này để xác nhận không hỏng.
