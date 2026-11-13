@@ -14,6 +14,7 @@ ALL_BOARDS += oplinkmini
 ALL_BOARDS += gpsplatinum
 ALL_BOARDS += osd
 ALL_BOARDS += discoveryf4bare
+ALL_BOARDS += omnibusf4v3
 ALL_BOARDS += ccf3d spracingf3 spracingf3evo nucleof303re pikoblx tinyfish
 # SimPosix only builds on Linux
 ifeq ($(UNAME), Linux)
@@ -33,6 +34,7 @@ revonano_short         := 'revn'
 sparky2_short          := 'spk2'
 simposix_short         := 'posx'
 discoveryf4bare_short  := 'df4b'
+omnibusf4v3_short      := 'of43'
 gpsplatinum_short      := 'gps9'
 nucleof303re_short     := 'nf3r'
 pikoblx_short          := 'piko'
@@ -49,6 +51,12 @@ EF_BOARDS  := $(ALL_BOARDS)
 BL_BOARDS  := $(filter-out simposix, $(BL_BOARDS))
 BU_BOARDS  := $(filter-out simposix gpsplatinum, $(BU_BOARDS))
 EF_BOARDS  := $(filter-out simposix, $(EF_BOARDS))
+
+# OmnibusF4V3 shares the Revolution board ID (0x0903) and runs the
+# Revolution bootloader, so it only has a FW target.
+BL_BOARDS  := $(filter-out omnibusf4v3, $(BL_BOARDS))
+BU_BOARDS  := $(filter-out omnibusf4v3, $(BU_BOARDS))
+EF_BOARDS  := $(filter-out omnibusf4v3, $(EF_BOARDS))
 
 # Generate the targets for whatever boards are left in each list
 FW_TARGETS := $(addprefix fw_, $(FW_BOARDS))

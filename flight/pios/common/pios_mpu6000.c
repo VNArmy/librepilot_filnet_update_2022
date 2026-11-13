@@ -686,7 +686,7 @@ static int32_t PIOS_MPU6000_Test(void)
         return -1;
     }
 
-    if (mpu6000_id != 0x68) {
+    if (mpu6000_id != 0x68 && mpu6000_id != 0x70) {
         return -2;
     }
 
