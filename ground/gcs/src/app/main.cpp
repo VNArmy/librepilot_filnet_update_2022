@@ -390,7 +390,9 @@ int runApplication(int argc, char * *argv)
         QByteArray existing = qgetenv("OSG_LIBRARY_PATH");
         QByteArray updated  = libDir.toLocal8Bit();
         if (!existing.isEmpty()) {
-            updated += ":" + existing;
+            // ';' on Windows, ':' elsewhere
+            updated += QDir::listSeparator().toLatin1();
+            updated += existing;
         }
         qputenv("OSG_LIBRARY_PATH", updated);
     }

@@ -95,10 +95,11 @@ win32 {
         addCopyDependenciesTarget($${dll},$$[QT_INSTALL_BINS],$${GCS_APP_PATH})
     }
 
-    # copy OpenSSL DLLs
+    # copy OpenSSL DLLs (Qt loads them at run time, so ntldd cannot find them)
+    contains(QT_ARCH, x86_64):OPENSSL_DLL_SUFFIX = -x64
     OPENSSL_DLLS = \
-        libcrypto-1_1-x64.dll \
-        libssl-1_1-x64.dll
+        libcrypto-3$${OPENSSL_DLL_SUFFIX}.dll \
+        libssl-3$${OPENSSL_DLL_SUFFIX}.dll
 
     for(dll, OPENSSL_DLLS) {
         addCopyFileTarget($${dll},$$[QT_INSTALL_BINS],$${GCS_APP_PATH})
@@ -124,7 +125,9 @@ for(plugin, QT_PLUGINS) {
 # Copy QtQuick2 complete directories
 # Some of these directories have a lot of files
 # Easier to copy everything
+# QtQml (with Models.2 and WorkerScript.2) is required by QtQuick.2 since Qt 5.14
 QT_QUICK2_DIRS = \
+    QtQml \
     QtQuick/Controls \
     QtQuick/Dialogs \
     QtQuick/Layouts \

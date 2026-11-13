@@ -28,9 +28,8 @@ win32:gstreamer {
         libgstplayback.dll \
         libgsttcp.dll \
         libgsttypefindfunctions.dll \
-        libgstvideoconvert.dll \
+        libgstvideoconvertscale.dll \
         libgstvideorate.dll \
-        libgstvideoscale.dll \
         libgstvideotestsrc.dll
 
     # gst-plugins-good
