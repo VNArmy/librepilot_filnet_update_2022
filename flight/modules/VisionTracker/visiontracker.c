@@ -47,7 +47,9 @@
 #if defined(PIOS_VISIONTRACKER_STACK_SIZE)
 #define STACK_SIZE_BYTES  PIOS_VISIONTRACKER_STACK_SIZE
 #else
-#define STACK_SIZE_BYTES  512
+// the task uses the FPU, so a context switch saves 204 bytes on its stack;
+// the deepest path (queue send waking a higher priority task) needs ~510 bytes
+#define STACK_SIZE_BYTES  768
 #endif
 #define TASK_PRIORITY     (tskIDLE_PRIORITY + 1)
 
