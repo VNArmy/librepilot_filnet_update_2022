@@ -16,7 +16,8 @@ def create_qml_file(args):
     assert args.outfile is not None
     assert args.template is not None
 
-    with open(args.infile, "rt") as input_file:
+    # explicit encoding: the default is the ANSI code page on Windows
+    with open(args.infile, "rt", encoding="utf-8") as input_file:
         names = input_file.readlines()
 
     names_list = ""
@@ -24,10 +25,10 @@ def create_qml_file(args):
         if name.strip():
             names_list += "    ListElement { name: \"" + name.strip() + "\" }\r\n"
 
-    with open(args.template, "r") as template_file:
+    with open(args.template, "r", encoding="utf-8") as template_file:
         template = template_file.read()
 
-    with open(args.outfile, "w") as output_file:
+    with open(args.outfile, "w", encoding="utf-8") as output_file:
         output_file.write(template.replace("${LIST_ELEMENTS}", names_list.rstrip()))
 
     return 0

@@ -10,7 +10,7 @@
 
 from subprocess import Popen, PIPE
 from re import search, MULTILINE
-from datetime import datetime
+from datetime import datetime, timezone
 from string import Template
 import optparse
 import hashlib
@@ -163,7 +163,7 @@ class Repo:
             if format == None:
                 return self._time
             else:
-                return datetime.utcfromtimestamp(float(self._time)).strftime(format)
+                return datetime.fromtimestamp(float(self._time), timezone.utc).strftime(format)
 
     def tag(self, none = None):
         """Return git tag for the HEAD commit or given string if none"""

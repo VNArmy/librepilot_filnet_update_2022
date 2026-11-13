@@ -1,24 +1,15 @@
-# We use python to extract git version info and generate some other files,
-# but it may be installed locally. The expected python version should be
-# kept in sync with make/tools.mk.
-PYTHON_DIR = qt-5.4.1/Tools/mingw491_32/opt/bin
+# We use python to extract git version info and generate some other files.
+# The top level Makefile (make/tools.mk) exports the interpreter it uses as
+# PYTHON, so use the same one. The scripts run with Python 3.
+PYTHON = $$(PYTHON)
 
-# Search the python using environment override first
-TOOLS_DIR = $$(TOOLS_DIR)
-!isEmpty(TOOLS_DIR):exists($$TOOLS_DIR/$$PYTHON_DIR/python*) {
-    PYTHON = \"$$TOOLS_DIR/$$PYTHON_DIR/python\"
-} else {
-    # If not found, search the predefined tools path
-    exists($$ROOT_DIR/tools/$$PYTHON_DIR/python*) {
-        PYTHON = \"$$ROOT_DIR/tools/$$PYTHON_DIR/python\"
+isEmpty(PYTHON) {
+    # not started from the top level Makefile (e.g. Qt Creator), search the path
+    PYTHON_VER = "$$system(python3 --version 2>&1)"
+    contains(PYTHON_VER, "Python 3.*") {
+        PYTHON = python3
     } else {
-        # not found, hope it's in the path...
-        PYTHON_VER = "$$system(python --version 2>&1)"
-        contains(PYTHON_VER, "Python 2.*") {
-            PYTHON = \"python\"
-        } else {
-            PYTHON = \"python2\"
-        }
+        PYTHON = python
     }
 }
 

@@ -57,7 +57,9 @@ defineTest(addCopyDependenciesTarget) {
     file = $$1
     src  = $$2/$$1
     dest = $$3
-    excludes = OPENGL32.dll libgallium_wgl.dll libLLVM-14.dll
+    # file names or wildcard patterns, matched case insensitively: never bundle
+    # mesa's opengl32.dll (and its dependencies), the driver's one must be used
+    excludes = opengl32.dll libgallium_wgl.dll \"libLLVM-*.dll\"
     target_file = $${OUT_PWD}/deps/$${file}.deps
 
     target = $${file}_deps

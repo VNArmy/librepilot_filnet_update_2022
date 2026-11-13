@@ -151,12 +151,17 @@ else ifeq ($(UNAME), Darwin)
     OSG_SDK_DIR      := $(TOOLS_DIR)/osg-$(OSG_VERSION)-clang_64
     OSGEARTH_SDK_DIR := $(TOOLS_DIR)/osgearth-$(OSGEARTH_VERSION)-clang_64
 else ifeq ($(UNAME), Windows)
-    ifeq ($(ARCH), x86_64)
+    # MSYS2 shells set MSYSTEM_PREFIX to the active environment (/ucrt64,
+    # /mingw64, /clang64...). Use it so that the compiler, Qt, OSG and python
+    # all come from the same environment.
+    ifneq ($(MSYSTEM_PREFIX),)
+        MINGW_DIR := $(MSYSTEM_PREFIX)
+    else ifeq ($(ARCH), x86_64)
         MINGW_DIR := /mingw64
     else
         MINGW_DIR := /mingw32
     endif
-    # When changing PYTHON_DIR, you must also update it in ground/gcs/src/python.pri
+    # The resulting PYTHON is exported to qmake (see ground/gcs/src/python.pri)
     PYTHON_DIR   := $(MINGW_DIR)/bin
     OSG_SDK_DIR  := $(MINGW_DIR)
     OSGEARTH_SDK_DIR := $(MINGW_DIR)
@@ -568,7 +573,13 @@ else
         QMAKE := . $(OPT_QT_ENV_SH) && qmake
     else
         # not installed, hope it's in the path...
-        QMAKE := qmake
+        # MSYS2 and some Linux distributions name the Qt 5 qmake 'qmake-qt5'
+        # (plain 'qmake' is Qt 6 there).
+        ifneq ($(shell command -v qmake-qt5 2>/dev/null),)
+            QMAKE := qmake-qt5
+        else
+            QMAKE := qmake
+        endif
     endif
 endif
 

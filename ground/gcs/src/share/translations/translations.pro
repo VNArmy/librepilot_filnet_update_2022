@@ -11,10 +11,18 @@ defineReplace(prependAll) {
     return($$result)
 }
 
-XMLPATTERNS = $$[QT_INSTALL_BINS]/xmlpatterns
-LUPDATE = $$[QT_INSTALL_BINS]/lupdate -locations relative -no-ui-lines -no-sort
-LRELEASE = $$[QT_INSTALL_BINS]/lrelease
-LCONVERT = $$[QT_INSTALL_BINS]/lconvert
+# Qt tool path; MSYS2 (and some Linux distributions) add a -qt5 suffix to the
+# Qt 5 linguist tools (lrelease-qt5.exe...)
+defineReplace(gcsQtTool) {
+    tool = $$[QT_INSTALL_BINS]/$$1
+    exists($${tool}-qt5*):tool = $${tool}-qt5
+    return($$tool)
+}
+
+XMLPATTERNS = $$gcsQtTool(xmlpatterns)
+LUPDATE = $$gcsQtTool(lupdate) -locations relative -no-ui-lines -no-sort
+LRELEASE = $$gcsQtTool(lrelease)
+LCONVERT = $$gcsQtTool(lconvert)
 
 TRANSLATIONS = $$prependAll(LANGUAGES, $$PWD/gcs_,.ts)
 
