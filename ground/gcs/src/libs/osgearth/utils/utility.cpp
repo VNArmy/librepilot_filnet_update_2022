@@ -81,8 +81,23 @@
 #include <QKeyEvent>
 #include <QCoreApplication>
 #include <QThread>
+#include <QUrl>
 
 namespace osgQtQuick {
+QString urlToLocalFile(const QUrl &url)
+{
+    if (url.isLocalFile()) {
+        return url.toLocalFile();
+    }
+#ifdef Q_OS_WIN
+    // drive letter parsed as the scheme ("d" for "D:\dir\file")
+    if (url.scheme().length() == 1) {
+        return url.scheme() + QLatin1Char(':') + url.path();
+    }
+#endif
+    return url.path();
+}
+
 class CullCallback : public osg::NodeCallback {
 public:
     CullCallback()
@@ -520,10 +535,16 @@ void capabilitiesInfo(const osgEarth::Capabilities &caps)
 
     qDebug().nospace() << "Num Processors : " << caps.getNumProcessors();
 
-    qDebug().nospace() << "MaxFFPTextureUnits : " << caps.getMaxFFPTextureUnits();
     qDebug().nospace() << "MaxGPUTextureUnits : " << caps.getMaxGPUTextureUnits();
-    qDebug().nospace() << "MaxGPUAttribs : " << caps.getMaxGPUAttribs();
     qDebug().nospace() << "MaxTextureSize : " << caps.getMaxTextureSize();
+    qDebug().nospace() << "DepthPackedStencilBuffer : " << caps.supportsDepthPackedStencilBuffer();
+    qDebug().nospace() << "DrawInstanced : " << caps.supportsDrawInstanced();
+    qDebug().nospace() << "NonPowerOfTwoTextures : " << caps.supportsNonPowerOfTwoTextures();
+    qDebug().nospace() << "FragDepthWrite : " << caps.supportsFragDepthWrite();
+#if OSGEARTH_MAJOR_VERSION < 3
+    // no longer available in osgEarth 3
+    qDebug().nospace() << "MaxFFPTextureUnits : " << caps.getMaxFFPTextureUnits();
+    qDebug().nospace() << "MaxGPUAttribs : " << caps.getMaxGPUAttribs();
     qDebug().nospace() << "MaxLights : " << caps.getMaxLights();
     qDebug().nospace() << "DepthBufferBits : " << caps.getDepthBufferBits();
     qDebug().nospace() << "TextureArrays : " << caps.supportsTextureArrays();
@@ -533,14 +554,11 @@ void capabilitiesInfo(const osgEarth::Capabilities &caps)
     qDebug().nospace() << "TwoSidedStencil : " << caps.supportsTwoSidedStencil();
     qDebug().nospace() << "Texture2DLod : " << caps.supportsTexture2DLod();
     qDebug().nospace() << "MipmappedTextureUpdates : " << caps.supportsMipmappedTextureUpdates();
-    qDebug().nospace() << "DepthPackedStencilBuffer : " << caps.supportsDepthPackedStencilBuffer();
     qDebug().nospace() << "OcclusionQuery : " << caps.supportsOcclusionQuery();
-    qDebug().nospace() << "DrawInstanced : " << caps.supportsDrawInstanced();
     qDebug().nospace() << "UniformBufferObjects : " << caps.supportsUniformBufferObjects();
-    qDebug().nospace() << "NonPowerOfTwoTextures : " << caps.supportsNonPowerOfTwoTextures();
     qDebug().nospace() << "MaxUniformBlockSize : " << caps.getMaxUniformBlockSize();
     qDebug().nospace() << "PreferDisplayListsForStaticGeometry : " << caps.preferDisplayListsForStaticGeometry();
-    qDebug().nospace() << "FragDepthWrite : " << caps.supportsFragDepthWrite();
+#endif
 }
 #endif // USE_OSGEARTH
 

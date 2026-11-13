@@ -34,7 +34,12 @@
 #include <osgEarth/Config>
 #include <osgEarth/DateTime>
 #include <osgEarth/MapNode>
+#include <osgEarth/Version>
+#if OSGEARTH_MAJOR_VERSION >= 3
+#include <osgEarth/Sky>
+#else
 #include <osgEarthUtil/Sky>
+#endif
 
 // #include <osgEarthDrivers/sky_silverlining/SilverLiningOptions>
 
@@ -43,13 +48,20 @@
 namespace osgQtQuick {
 enum DirtyFlag { Scene = 1 << 0, Viewport = 1 << 1, DateTime = 1 << 2, Light = 1 << 3 };
 
+// osgEarth 3 moved SkyNode from osgEarth::Util to osgEarth
+#if OSGEARTH_MAJOR_VERSION >= 3
+typedef osgEarth::SkyNode EarthSkyNode;
+#else
+typedef osgEarth::Util::SkyNode EarthSkyNode;
+#endif
+
 struct OSGSkyNode::Hidden : public QObject {
     Q_OBJECT
 
 private:
     OSGSkyNode * const self;
 
-    osg::ref_ptr<osgEarth::Util::SkyNode> skyNode;
+    osg::ref_ptr<EarthSkyNode> skyNode;
 
 public:
     OSGNode     *sceneNode;
@@ -128,9 +140,15 @@ public:
         }
     }
 
-    osgEarth::Util::SkyNode *createSimpleSky(osgEarth::MapNode *mapNode)
+    EarthSkyNode *createSimpleSky(osgEarth::MapNode *mapNode)
     {
-        return osgEarth::Util::SkyNode::create(mapNode);
+#if OSGEARTH_MAJOR_VERSION >= 3
+        // osgEarth 3 dropped the MapNode argument
+        Q_UNUSED(mapNode);
+        return EarthSkyNode::create();
+#else
+        return EarthSkyNode::create(mapNode);
+#endif
     }
 
 /*

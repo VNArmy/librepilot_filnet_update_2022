@@ -27,6 +27,8 @@
 
 #include "imagesource.hpp"
 
+#include "utility.h"
+
 #include <osg/Image>
 #include <osgDB/ReadFile>
 
@@ -34,7 +36,9 @@
 
 osg::Image *ImageSource::createImage(QUrl &url)
 {
-    qDebug() << "ImageSource::createImage - reading image file" << url.path();
-    osg::Image *image = osgDB::readImageFile(url.path().toStdString());
+    const QString fileName = osgQtQuick::urlToLocalFile(url);
+
+    qDebug() << "ImageSource::createImage - reading image file" << fileName;
+    osg::Image *image = osgDB::readImageFile(fileName.toStdString());
     return image;
 }

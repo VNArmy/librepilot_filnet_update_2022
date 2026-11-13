@@ -27,6 +27,8 @@
 
 #include "OSGFileNode.hpp"
 
+#include "utils/utility.h"
+
 #include <osgDB/ReadFile>
 #include <osgUtil/Optimizer>
 
@@ -57,11 +59,12 @@ public:
         QElapsedTimer t;
 
         t.start();
-        // qDebug() << "OSGFileLoader::load - reading node file" << url.path();
+        const QString fileName = urlToLocalFile(url);
+        // qDebug() << "OSGFileLoader::load - reading node file" << fileName;
         // qDebug() << "OSGFileLoader - load - currentContext" << QOpenGLContext::currentContext();
-        osg::Node *node = osgDB::readNodeFile(url.path().toStdString());
+        osg::Node *node = osgDB::readNodeFile(fileName.toStdString());
         if (!node) {
-            qWarning() << "OSGFileLoader::load - failed to load" << url.path();
+            qWarning() << "OSGFileLoader::load - failed to load" << fileName;
         }
         // qDebug() << "OSGFileLoader::load - reading node" << node << "took" << t.elapsed() << "ms";
         return node;

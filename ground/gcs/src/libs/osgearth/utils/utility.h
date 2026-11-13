@@ -36,6 +36,7 @@
 #include <QtGlobal>
 #include <QOpenGLContext>
 #include <QSurfaceFormat>
+#include <QString>
 
 #include <string>
 #include <map>
@@ -69,6 +70,7 @@ class SpatialReference;
 QT_BEGIN_NAMESPACE
 class QFont;
 class QKeyEvent;
+class QUrl;
 QT_END_NAMESPACE
 
 namespace osgQtQuick {
@@ -120,6 +122,11 @@ T *findTopMostNodeOfType(osg::Node *node)
 }
 
 void insertCallbacks(osg::Node *node);
+
+// File path of an url set from QML, which can be a file url or a plain path.
+// On Windows a plain path such as "D:\dir\file" parses as an url whose scheme
+// is the drive letter, and QUrl::path() alone drops the drive.
+QString urlToLocalFile(const QUrl &url);
 
 osg::Camera *createHUDCamera(double left, double right, double bottom, double top);
 

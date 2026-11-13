@@ -31,7 +31,13 @@
 #include <osg/Node>
 
 #ifdef USE_OSGEARTH
+#include <osgEarth/Version>
+// osgEarth 3 merged the osgEarthUtil library into osgEarth
+#if OSGEARTH_MAJOR_VERSION >= 3
+#include <osgEarth/LogarithmicDepthBuffer>
+#else
 #include <osgEarthUtil/LogarithmicDepthBuffer>
+#endif
 #endif
 
 #include <QDebug>

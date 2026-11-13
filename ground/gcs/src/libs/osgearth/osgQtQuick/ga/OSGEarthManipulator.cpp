@@ -29,7 +29,13 @@
 
 #include "../OSGNode.hpp"
 
+#include <osgEarth/Version>
+// osgEarth 3 merged the osgEarthUtil library into osgEarth
+#if OSGEARTH_MAJOR_VERSION >= 3
+#include <osgEarth/EarthManipulator>
+#else
 #include <osgEarthUtil/EarthManipulator>
+#endif
 
 #include <QDebug>
 

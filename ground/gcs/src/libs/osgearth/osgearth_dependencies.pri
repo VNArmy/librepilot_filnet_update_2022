@@ -40,17 +40,29 @@ osgearth {
     OSGEARTH_SDK_DIR = $$clean_path($$(OSGEARTH_SDK_DIR))
     message(Using osgearth from here: $$OSGEARTH_SDK_DIR)
 
+    # osgEarth 3 merged osgEarthUtil (and its other helper libraries) into
+    # libosgEarth, and its headers need C++17. MSYS2 only ships osgEarth 3.
+    win32 {
+        CONFIG += osgearth3
+    } else {
+        !exists($$OSGEARTH_SDK_DIR/include/osgEarthUtil):!exists(/usr/include/osgEarthUtil):CONFIG += osgearth3
+    }
+    osgearth3 {
+        message(Using the osgEarth 3 API)
+        CONFIG += c++17
+    }
+
     linux|macx {
         INCLUDEPATH += $$OSGEARTH_SDK_DIR/include
         LIBS += -L$$OSGEARTH_SDK_DIR/$$LIB_DIR_NAME
         LIBS += -losgEarth
-        LIBS += -losgEarthUtil
+        !osgearth3:LIBS += -losgEarthUtil
         osgearthQt:LIBS +=  -losgEarthQt
     }
 
     win32 {
         LIBS += -losgEarth$${DS}
-        LIBS += -losgEarthUtil$${DS}
+        !osgearth3:LIBS += -losgEarthUtil$${DS}
         osgearthQt:LIBS += -losgEarthQt$${DS}
     }
 }
